@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.material3)
     implementation(project(mapOf("path" to ":framework:annotations")))
+    implementation(project(":framework:base"))
     testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

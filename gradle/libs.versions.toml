@@ -28,7 +28,7 @@ constraintlayout = "2.1.4"
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "gradlePlugin" }
 metalavaGradle = "me.tylerbwong.gradle:metalava-gradle:0.1.9"
 google-ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
-
+google-gson = "com.google.code.gson:gson:2.8.6"
 androidx-core = "androidx.core:core-ktx:1.9.0"
 androidx-annotation = "androidx.annotation:annotation:1.7.0"
 androidx-fragment = "androidx.fragment:fragment-ktx:1.6.2"
