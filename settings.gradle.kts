@@ -1,0 +1,21 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "BreadBoard"
+include(":sample")
+include(":framework:annotations")
+include(":framework:launcher")
+include(":framework:processor")
+include(":bizs:bizhome")
