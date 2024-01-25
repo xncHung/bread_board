@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     alias(libs.plugins.org.jetbrains.kotlin.android)
     alias(libs.plugins.google.ksp.plugin)
+    alias(libs.plugins.breadboard)
 }
 
 android {
@@ -25,6 +26,20 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        create("breadboard") {
+            isDebuggable = true
+        }
+    }
+
+    flavorDimensions.add("feature")
+    productFlavors {
+        create("pro") {
+            dimension = "feature"
+        }
+        create("free") {
+            dimension = "feature"
         }
     }
     compileOptions {

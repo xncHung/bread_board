@@ -87,15 +87,12 @@ class ComponentProcessor(
         resolver: Resolver,
         converterFactories: MutableMap<String, MutableList<KSFunctionDeclaration>>
     ) {
-        val ksType = ksDeclaration.returnType?.resolve()
-        val toFullPath = ksType?.declaration?.toFullPath()
         val annotation =
             ksDeclaration.qualifierAnnotation()?.annotationType?.resolve()?.declaration?.qualifiedName?.asString()
                 ?: DefaultQualifier::class.qualifiedName!!
         if (ksDeclaration.isValidConverterFactory) {
             converterFactories.getOrPut(annotation) { mutableListOf() }.add(ksDeclaration)
         } else {
-            logger.warn("${ksDeclaration.returnType?.resolve()?.declaration?.toFullPath()}")
             logger.error("converterFactory func:'${ksDeclaration.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static,the return type should be function type,like:(String,Type)->T? ,for java it should be kotlin.jvm.functions.Function2")
         }
     }

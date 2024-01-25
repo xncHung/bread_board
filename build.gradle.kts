@@ -5,4 +5,5 @@ plugins {
     alias(libs.plugins.google.ksp.plugin) apply false
     alias(libs.plugins.org.jetbrains.kotlin.jvm) apply false
     alias(libs.plugins.com.android.library) apply false
+    alias(libs.plugins.breadboard) apply false
 }

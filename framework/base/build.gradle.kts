@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.xnchung.breadboard.launcher"
+    namespace = "io.xnchung.breadboard.base"
     compileSdk = 33
 
     defaultConfig {

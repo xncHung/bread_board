@@ -8,7 +8,7 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
-        freeCompilerArgs.add("-Xopt-in=kotlin.RequiresOptIn")
+        freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
     }
 }
 dependencies {
