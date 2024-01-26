@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.FunctionKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.Modifier
 import io.xnchung.breadboard.annotations.ParamQualifier
 import java.lang.reflect.Type
 import kotlin.reflect.KClass
@@ -30,7 +31,7 @@ val KSFunctionDeclaration.returnStringConverterFunc
         } == true
 
 val KSFunctionDeclaration.isStaticOrTopLevel get() = functionKind == FunctionKind.TOP_LEVEL || functionKind == FunctionKind.STATIC
-val KSFunctionDeclaration.onlyTypeParam get() = parameters.size == 1 && parameters.first().type.resolve().declaration.qualifiedName?.asString() == Type::class.qualifiedName
+val KSFunctionDeclaration.isSuspend get() = Modifier.SUSPEND in modifiers
 val KSFunctionDeclaration.stringExtReceiver get() = extensionReceiver?.resolve()?.declaration?.qualifiedName?.asString() == String::class.qualifiedName
 val KSFunctionDeclaration.isValidConverterFactory
     get() =

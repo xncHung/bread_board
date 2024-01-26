@@ -4,6 +4,6 @@ data class ParamHolder<T>(
     val key: String,
     val defaultValue: String,
     val qualifier: String
-) : ParamTypeToken<T>
+) : TypeToken<T>
 
-interface ParamTypeToken<T>
+interface TypeToken<T>

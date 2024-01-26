@@ -1,14 +1,14 @@
 package io.xnchung.breadboard.gradle.plugin
 
 import com.android.build.api.AndroidPluginVersion
-import com.android.build.api.variant.AndroidComponentsExtension
-import com.android.build.api.variant.Variant
 import com.android.build.gradle.AppExtension
+import com.android.build.gradle.AppPlugin
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidBasePlugin
 import com.android.build.gradle.api.BaseVariant
+import io.xnchung.breadboard.gradle.plugin.apicompat.getAndroidComponentsExtension
 import io.xnchung.breadboard.gradle.plugin.task.addKspTaskProcessorOptions
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -39,20 +39,38 @@ class BreadBoardPlugin : Plugin<Project> {
         if (currentAGPVersion < AndroidPluginVersion(7, 0)) {
             error("The Breadboard plugin is only compatible with Android Gradle Plugin(AGP) version 7.0 or higher ,but found $currentAGPVersion")
         }
-        configureBytecodeTransformASM()
+        val breadBoardExtension = extensions.create(BreadBoardExtension::class.java, "breadboard", BreadBoardExtensionImpl::class.java)
+
+        configureBytecodeTransformASM(breadBoardExtension)
         configureProcessorFlags()
     }
 
-    private fun Project.configureBytecodeTransformASM() {
+    private fun Project.configureBytecodeTransformASM(breadBoardExtension: BreadBoardExtension) {
+        if (plugins.hasPlugin(AppPlugin::class.java)) {
+            getAndroidComponentsExtension().collectAndInjectConverterProvidersAndComponents(this@configureBytecodeTransformASM, breadBoardExtension)
 
+//            project.extensions.getByType(AndroidComponentsExtension::class.java).onVariants {
+//                val taskProvider =
+//                    tasks.register(
+//                        "Collect${it.name.capitalized()}ConverterProvidersAndComponents",
+//                        CollectConverterFactoriesAndComponentsTask::class.java
+//                    )
+//                it.artifacts.forScope(ScopedArtifacts.Scope.ALL).use(taskProvider).toTransform(
+//                    ScopedArtifact.CLASSES,
+//                    CollectConverterFactoriesAndComponentsTask::allJars,
+//                    CollectConverterFactoriesAndComponentsTask::allDirectories,
+//                    CollectConverterFactoriesAndComponentsTask::output
+//                )
+//            }
+        }
     }
 
     private fun Project.configureProcessorFlags() {
-        val androidExtension = requireNotNull(baseExtension()) { "Android BaseExtension not found." }
-        extensions.getByType(AndroidComponentsExtension::class.java).onVariants { variant: Variant ->
-            variant.buildType?.let { buildType -> androidExtension.buildTypes.findByName(buildType) }?.also {
+        val androidBaseExtension = baseExtension()
+        getAndroidComponentsExtension().onAllVariants {
+            buildType?.let { buildType -> androidBaseExtension.buildTypes.findByName(buildType) }?.also {
                 val debuggable = it.isDebuggable
-                addKspTaskProcessorOptions(variant) {
+                addKspTaskProcessorOptions(this) {
                     BreadBoardCmdLineArgumentProvider(true, debuggable)
                 }
             }

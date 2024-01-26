@@ -1,14 +1,14 @@
 package io.xnchung.breadboard.gradle.plugin.task
 
-import com.android.build.api.variant.Variant
 import com.google.devtools.ksp.gradle.KspTaskJvm
+import io.xnchung.breadboard.gradle.plugin.apicompat.ComponentCompat
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.process.CommandLineArgumentProvider
 import java.util.Locale
 
 internal fun Project.addKspTaskProcessorOptions(
-    variant: Variant,
+    variant: ComponentCompat,
     produceArgProvider: (Task) -> CommandLineArgumentProvider
 ) = plugins.withId("com.google.devtools.ksp") {
     checkClass("com.google.devtools.ksp.gradle.KspTaskJvm") {

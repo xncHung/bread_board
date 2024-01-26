@@ -1,3 +1,4 @@
+@Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     id("com.android.application")
     alias(libs.plugins.org.jetbrains.kotlin.android)
@@ -55,13 +56,15 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+//    packaging {
+//        resources {
+//            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+//        }
+//    }
 }
-
+breadboard {
+    incremental = false
+}
 dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.lifecycle.runtime.ktx)

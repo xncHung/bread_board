@@ -6,22 +6,18 @@ import com.google.devtools.ksp.getAnnotationsByType
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.FileLocation
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSVisitorVoid
 import io.xnchung.breadboard.annotations.CollectionType
 import io.xnchung.breadboard.annotations.Component
 
 internal class ComponentVisitor(
-    private val resolver: Resolver,
     private val logger: KSPLogger,
     private val codeGenerator: CodeGenerator,
-    private val converterFactories: Map<String, List<KSFunctionDeclaration>>,
 ) : KSVisitorVoid() {
     override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
         val target = classDeclaration.getAllSuperTypes().firstNotNullOfOrNull {
@@ -133,7 +129,7 @@ internal class ComponentVisitor(
 }
 
 internal fun KSDeclaration.toFullPath() =
-    "${packageName.asString()}.${simpleName.asString()}"
+    qualifiedName?.asString() ?: "${packageName.asString()}.${simpleName.asString()}"
 
 private fun TypeTokenAnnotation.parseToFqn(): String {
     val kClass = rawType?.declaration?.toFullPath()
