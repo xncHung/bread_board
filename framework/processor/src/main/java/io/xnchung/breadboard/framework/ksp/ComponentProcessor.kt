@@ -25,7 +25,7 @@ class ComponentProcessor(
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(Component::class.java.name)
             .filter {
-                logger.warn("handle ksAnnotated = ${it::class} ,the content=$it")
+                logger.warn("handle ksAnnotated = ${it::class} isclass=${it is KSClassDeclaration},isFunction=${it is KSFunctionDeclaration},the content=$it")
                 val isValid = it.validate()
                 if (!isValid) {
                     logger.warn("this component is not valid ${it.containingFile?.filePath}")

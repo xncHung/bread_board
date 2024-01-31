@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.material3)
     implementation(project(mapOf("path" to ":sample:bizs:bizhome")))
+    implementation(libs.material)
+    implementation(libs.constraintlayout)
     ksp(project(":framework:processor"))
     debugImplementation(project(":framework:launcher"))
     debugImplementation(project(":framework:base"))

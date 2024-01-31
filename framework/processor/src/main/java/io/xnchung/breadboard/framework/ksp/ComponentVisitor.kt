@@ -50,16 +50,6 @@ internal class ComponentVisitor(
         createModule(classDeclaration, target)
     }
 
-//    override fun visitFunctionDeclaration(function: KSFunctionDeclaration, data: Unit) {
-//        require(
-//            function.annotations.any { it.shortName.asString() == "Composable" } &&
-//                function.parameters.isEmpty()
-//        ) {
-//            "@component must be a in a Composable function with empty parameters"
-//        }
-//
-//        createModule(function, "targetComposable { ${function.toFullPath()}() }")
-//    }
 
     @OptIn(KspExperimental::class)
     private fun createModule(componentFunction: KSDeclaration, target: String) {
@@ -157,7 +147,7 @@ package $componentPackage
 
 import io.xnchung.breadboard.model.*
 
-fun provide${componentFile}Component(): Sample {
+fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): Sample {
     return Sample(
       name = ${componentName.quote()},
       description = ${componentDescription.quote()},
