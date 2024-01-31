@@ -61,7 +61,7 @@ private fun convertFqnTemplate(
     return """
 package ${ClassNames.CONVERTERS_PACKAGE_NAME}
 
-  fun _provide_${name}_converterProvider(): ConverterHolder {
+  fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${name}ConverterProvider(): ConverterHolder {
     return $initStatement
   }
 """.trimIndent()
