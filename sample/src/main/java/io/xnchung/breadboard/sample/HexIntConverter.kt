@@ -9,7 +9,7 @@ import java.lang.reflect.Type
 
 @ParamQualifier
 @Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 annotation class HexInt
 
 @ConverterProvider

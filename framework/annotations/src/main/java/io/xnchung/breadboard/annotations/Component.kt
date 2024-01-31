@@ -3,7 +3,7 @@ package io.xnchung.breadboard.annotations
 import kotlin.reflect.KClass
 
 @MustBeDocumented
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 annotation class Component(
     val name: String,
@@ -17,7 +17,7 @@ annotation class Component(
 )
 
 @MustBeDocumented
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 annotation class Param<T : Any>(
     val key: String,
     val rawType: KClass<T>,
@@ -29,7 +29,7 @@ annotation class Param<T : Any>(
 )
 
 @MustBeDocumented
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 annotation class TypeToken<T : Any>(
     val rawType: KClass<T>,
     val typeArgs: Array<TypeToken<*>> = []
@@ -43,10 +43,10 @@ enum class CollectionType {
 }
 
 @Target(AnnotationTarget.ANNOTATION_CLASS)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 annotation class ParamQualifier
 
 @ParamQualifier
 @Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.BINARY)
+@Retention(AnnotationRetention.SOURCE)
 annotation class DefaultQualifier
