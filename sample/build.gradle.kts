@@ -30,7 +30,7 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         create("breadboard") {
-            isDebuggable = true
+            initWith(buildTypes.getByName("debug"))
         }
     }
 
@@ -75,7 +75,7 @@ dependencies {
     implementation(libs.compose.material.material3)
     implementation(project(mapOf("path" to ":sample:bizs:bizhome")))
     ksp(project(":framework:processor"))
-    implementation(project(":framework:launcher"))
+    debugImplementation(project(":framework:launcher"))
     debugImplementation(project(":framework:base"))
     implementation(project(mapOf("path" to ":framework:annotations")))
     testImplementation(libs.junit)

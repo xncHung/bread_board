@@ -5,9 +5,9 @@ import com.android.build.api.variant.ApplicationVariant
 import com.android.build.api.variant.LibraryVariant
 import com.android.build.gradle.AppExtension
 import io.xnchung.breadboard.gradle.plugin.BreadBoardExtension
-import io.xnchung.breadboard.gradle.plugin.CollectConverterFactoriesAndSamplesTransform
 import io.xnchung.breadboard.gradle.plugin.apicompat.AndroidComponentsExtensionCompat
 import io.xnchung.breadboard.gradle.plugin.apicompat.ComponentCompat
+import io.xnchung.breadboard.gradle.plugin.instrumentation.CollectConverterFactoriesAndSamplesTransform
 import org.gradle.api.Project
 
 class AndroidComponentsExtensionCompatApi70Impl(private val project: Project) : AndroidComponentsExtensionCompat {

@@ -113,6 +113,10 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
     ]
 )
 class MainActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {

@@ -28,7 +28,8 @@ annotation class Param<T : Any>(
     val qualifier: KClass<out Annotation> = DefaultQualifier::class
 )
 
-
+@MustBeDocumented
+@Retention(AnnotationRetention.BINARY)
 annotation class TypeToken<T : Any>(
     val rawType: KClass<T>,
     val typeArgs: Array<TypeToken<*>> = []

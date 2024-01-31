@@ -1,5 +1,6 @@
 package io.xnchung.breadboard.converters
 
+import android.util.Log
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import io.xnchung.breadboard.annotations.DefaultQualifier
@@ -9,25 +10,23 @@ import java.lang.reflect.GenericArrayType
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 
-sealed class ConverterHolder(val qualifier: String, val order: Int) {
-    class Normal(qualifier: String, order: Int, val func: String.(Type) -> Any?) : ConverterHolder(qualifier, order)
-    class Suspend(qualifier: String, order: Int, val func: suspend String.(Type) -> Any?) : ConverterHolder(qualifier, order)
-}
+internal object ConverterCore {
+    private const val TAG = "ConverterCore"
 
-object ConverterCore {
     /**
      * it will be filled by gradle plugin
      */
-    private val allExtConverterFactories: Map<String, List<ConverterHolder>> = mutableMapOf<String, MutableList<ConverterHolder>>().apply {
+    internal val allExtConverterFactories: Map<String, List<ConverterHolder>> = mutableMapOf<String, MutableList<ConverterHolder>>().apply {
         fillConverterFactories(this)
     }.mapValues { it.value.sortedBy { it.order } }
 
-    private fun fillConverterFactories(mutableMap: MutableMap<String, MutableList<ConverterHolder>>) {
 
+    private fun fillConverterFactories(mutableMap: MutableMap<String, MutableList<ConverterHolder>>) {
     }
 
-    @JvmStatic
+    @Suppress("unused")
     private fun newConverterHolder(factories: MutableMap<String, MutableList<ConverterHolder>>, holder: ConverterHolder) {
+        Log.d(TAG, "newConverterHolder() called with: factories = $factories, holder = $holder")
         factories.getOrPut(holder.qualifier) { mutableListOf() }.add(holder)
     }
 

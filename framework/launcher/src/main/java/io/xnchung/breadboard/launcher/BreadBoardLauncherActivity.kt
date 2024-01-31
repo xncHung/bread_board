@@ -1,6 +1,7 @@
 package io.xnchung.breadboard.launcher
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,18 +11,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import io.xnchung.breadboard.converters.ConverterCore
 import io.xnchung.breadboard.launcher.ui.theme.BreadBoardTheme
 
-class MainActivity : ComponentActivity() {
+class BreadBoardLauncherActivity : ComponentActivity() {
+    companion object {
+        private const val TAG = "BreadBoardLauncher"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate: samplers=${AllSamplesHolder.allSamples}")
+        Log.d(TAG, "onCreate: converters=${ConverterCore.allExtConverterFactories}")
         setContent {
             BreadBoardTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Greeting("Android")
                 }
-             }
+            }
         }
     }
 }

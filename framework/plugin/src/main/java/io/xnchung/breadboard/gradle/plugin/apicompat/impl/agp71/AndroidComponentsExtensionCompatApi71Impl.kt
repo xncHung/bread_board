@@ -4,9 +4,9 @@ import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.api.variant.HasAndroidTest
 import com.android.build.gradle.AppExtension
 import io.xnchung.breadboard.gradle.plugin.BreadBoardExtension
-import io.xnchung.breadboard.gradle.plugin.CollectConverterFactoriesAndSamplesTransform
 import io.xnchung.breadboard.gradle.plugin.apicompat.AndroidComponentsExtensionCompat
 import io.xnchung.breadboard.gradle.plugin.apicompat.ComponentCompat
+import io.xnchung.breadboard.gradle.plugin.instrumentation.CollectConverterFactoriesAndSamplesTransform
 import org.gradle.api.Project
 
 class AndroidComponentsExtensionCompatApi71Impl(private val project: Project) : AndroidComponentsExtensionCompat {

@@ -1,12 +1,16 @@
-package io.xnchung.breadboard.gradle.plugin
+package io.xnchung.breadboard.gradle.plugin.instrumentation
 
-import org.gradle.api.logging.LogLevel
-import org.gradle.api.logging.Logging
+import io.xnchung.breadboard.gradle.plugin.accessIsPublic
+import io.xnchung.breadboard.gradle.plugin.accessIsStatic
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
-class CollectConverterProvidersAndComponentVisitor(val sampleConsumer: () -> Unit, val converterConsumer: () -> Unit) : ClassVisitor(Opcodes.ASM9) {
+internal class CollectConverterProvidersAndComponentVisitor(
+    private val sampleConsumer: (AsmMethodInfo) -> Unit,
+    private val converterConsumer: (AsmMethodInfo) -> Unit
+) : ClassVisitor(Opcodes.ASM9) {
+
     private lateinit var classFqn: String
 
     override fun visit(version: Int, access: Int, name: String?, signature: String?, superName: String?, interfaces: Array<out String>?) {
@@ -18,17 +22,11 @@ class CollectConverterProvidersAndComponentVisitor(val sampleConsumer: () -> Uni
         if (access.accessIsPublic && access.accessIsStatic) {
             when (descriptor) {
                 "()Lio/xnchung/breadboard/model/Sample;" -> {
-                    Logging.getLogger("collect").log(
-                        LogLevel.WARN,
-                        "collect sample: access = $access, name = $classFqn.$name, descriptor = $descriptor, signature = $signature, exceptions = $exceptions"
-                    )
+                    sampleConsumer(AsmMethodInfo(classFqn, name!!, descriptor))
                 }
 
                 "()Lio/xnchung/breadboard/converters/ConverterHolder;" -> {
-                    Logging.getLogger("collect").log(
-                        LogLevel.WARN,
-                        "collect convert holder: access = $access, name = $classFqn.$name, descriptor = $descriptor, signature = $signature, exceptions = $exceptions"
-                    )
+                    converterConsumer(AsmMethodInfo(classFqn, name!!, descriptor))
                 }
 
                 else -> {}

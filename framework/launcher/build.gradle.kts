@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.activity.compose)
+    implementation(libs.google.gson)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui.ui)
     implementation(libs.compose.ui.ui.graphics)
