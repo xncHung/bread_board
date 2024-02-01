@@ -9,6 +9,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSVisitorVoid
 import io.xnchung.breadboard.annotations.ConverterProvider
 import io.xnchung.breadboard.annotations.DefaultQualifier
+import io.xnchung.breadboard.framework.ProcessConstants
 import io.xnchung.breadboard.framework.ksp.ClassNames
 import io.xnchung.breadboard.framework.ksp.isValidConverterFactory
 import io.xnchung.breadboard.framework.ksp.qualifierAnnotation
@@ -32,7 +33,7 @@ class ConverterVisitor(
                 it.write(convertFqnTemplate(function).toByteArray())
             }
         } else {
-            logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static,the return type should be function type,like:(String,Type)->T? ,for java it should be kotlin.jvm.functions.Function2")
+            logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static,the return type should be function type,like:(String,Type)->T? ,for java it should be ${ProcessConstants.KOTLIN_JVM_FUNC_2},like Function2<String,Type,Bean>")
         }
     }
 }

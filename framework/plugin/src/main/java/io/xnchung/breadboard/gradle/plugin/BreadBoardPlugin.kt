@@ -9,9 +9,14 @@ import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidBasePlugin
 import com.android.build.gradle.api.BaseVariant
 import io.xnchung.breadboard.gradle.plugin.apicompat.getAndroidComponentsExtension
+import io.xnchung.breadboard.gradle.plugin.task.addJavaTaskProcessorOptions
+import io.xnchung.breadboard.gradle.plugin.task.addKaptTaskProcessorOptions
 import io.xnchung.breadboard.gradle.plugin.task.addKspTaskProcessorOptions
+import io.xnchung.breadboard.gradle.plugin.task.isKspTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
+import org.gradle.process.CommandLineArgumentProvider
 
 class BreadBoardPlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -70,9 +75,12 @@ class BreadBoardPlugin : Plugin<Project> {
         getAndroidComponentsExtension().onAllVariants {
             buildType?.let { buildType -> androidBaseExtension.buildTypes.findByName(buildType) }?.also {
                 val debuggable = it.isDebuggable
-                addKspTaskProcessorOptions(this) {
-                    BreadBoardCmdLineArgumentProvider(true, debuggable)
+                val produceArgProvider: (Task) -> CommandLineArgumentProvider = {
+                    BreadBoardCmdLineArgumentProvider(it.isKspTask(), debuggable)
                 }
+                addKspTaskProcessorOptions(this, produceArgProvider)
+                addJavaTaskProcessorOptions(this, produceArgProvider)
+                addKaptTaskProcessorOptions(this, produceArgProvider)
             }
         }
     }

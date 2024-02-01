@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import io.xnchung.breadboard.annotations.ParamQualifier
+import io.xnchung.breadboard.framework.ProcessConstants
 import java.lang.reflect.Type
 import kotlin.reflect.KClass
 
@@ -21,7 +22,7 @@ val KSFunctionDeclaration.returnStringConverterFunc
     get() =
         returnType?.resolve()?.let {
             when (it.declaration.toFullPath()) {
-                "kotlin.Function2", "kotlin.coroutines.SuspendFunction2" -> {
+                ProcessConstants.KOTLIN_FUNC_2, ProcessConstants.KOTLIN_SUSPEND_FUNC_2 -> {
                     it.arguments.first().type?.resolve()?.declaration?.toFullPath() == String::class.qualifiedName &&
                             it.arguments[1].type?.resolve()?.declaration?.toFullPath() == Type::class.qualifiedName
                 }
@@ -52,3 +53,6 @@ fun KSAnnotation.getStringArg(param: String) = getArg<String>(param).orEmpty()
 fun String.quote() = """
     ""${'"'}$this""${'"'}
 """.trimIndent()
+
+fun String.quoteJava() = replace("[\\n|\\t|'|\"|\\\\|\b|\\r]".toRegex(), "\\\\\$0")
+

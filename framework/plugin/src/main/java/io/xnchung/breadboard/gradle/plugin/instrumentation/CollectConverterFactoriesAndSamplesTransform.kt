@@ -164,6 +164,7 @@ class CollectConverterFactoriesAndSamplesTransform(
         visitorAdapterFunc: ClassWriter.() -> ClassVisitor
     ) {
         JarOutputStream(dest.outputStream()).use { outJar ->
+            Logging.getLogger("transform").warn("$source")
             val jarFile = JarFile(source)
             jarFile.entries().asSequence().forEach { jarEntry ->
                 val inputStream = jarFile.getInputStream(jarEntry)

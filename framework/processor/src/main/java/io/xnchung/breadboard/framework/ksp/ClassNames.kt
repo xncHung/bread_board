@@ -8,5 +8,6 @@ object ClassNames {
     const val FRAGMENT = "androidx.fragment.app.Fragment"
     const val DIALOG = "android.app.Dialog"
     const val VIEW = "android.view.View"
+    const val SAMPLE_CONTRACT_FQN = "io.xnchung.breadboard.model.SampleContract"
     const val GEN_FUNC_NAME_SUFFIX = "_breadboard_provide_"
 }

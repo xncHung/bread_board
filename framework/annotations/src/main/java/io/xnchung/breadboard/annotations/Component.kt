@@ -7,7 +7,7 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 annotation class Component(
     val name: String,
-    val params: Array<Param<*>> = [],
+    val params: Array<Param> = [],
     val description: String = "",
     val tags: Array<String> = [],
     val routes: Array<String> = [],
@@ -18,10 +18,10 @@ annotation class Component(
 
 @MustBeDocumented
 @Retention(AnnotationRetention.SOURCE)
-annotation class Param<T : Any>(
+annotation class Param(
     val key: String,
-    val rawType: KClass<T>,
-    val typeArgs: Array<TypeToken<*>> = [],
+    val rawType: KClass<*>,
+    val typeArgs: Array<TypeToken> = [],
     val defaultValue: String = "",
     val desc: String = "",
     val collectionType: CollectionType = CollectionType.None,
@@ -30,9 +30,9 @@ annotation class Param<T : Any>(
 
 @MustBeDocumented
 @Retention(AnnotationRetention.SOURCE)
-annotation class TypeToken<T : Any>(
-    val rawType: KClass<T>,
-    val typeArgs: Array<TypeToken<*>> = []
+annotation class TypeToken(
+    val rawType: KClass<*>,
+    val typeArgs: Array<TypeToken> = []
 )
 
 enum class CollectionType {

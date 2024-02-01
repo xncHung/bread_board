@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     ksp(project(":framework:processor"))
+//    annotationProcessor(project(":framework:processor"))
     debugImplementation(project(":framework:launcher"))
     debugImplementation(project(":framework:base"))
     implementation(project(mapOf("path" to ":framework:annotations")))

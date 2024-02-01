@@ -15,4 +15,5 @@ dependencies {
     implementation(project(":framework:annotations"))
     implementation(libs.androidx.annotation)
     implementation(libs.google.ksp.api)
+    implementation(libs.javapoet)
 }

@@ -21,7 +21,7 @@ internal class CollectConverterProvidersAndComponentVisitor(
     override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
         if (access.accessIsPublic && access.accessIsStatic && name?.startsWith("_breadboard_provide_") == true) {
             when (descriptor) {
-                "()Lio/xnchung/breadboard/model/Sample;" -> {
+                "()Lio/xnchung/breadboard/model/SampleContract;" -> {
                     sampleConsumer(AsmMethodInfo(classFqn, name, descriptor))
                 }
 

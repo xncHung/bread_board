@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(project(mapOf("path" to ":framework:annotations")))
     ksp(project(":framework:processor"))
+//    annotationProcessor(project(":framework:processor"))
     debugImplementation(project(":framework:base"))
     testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.test.junit)

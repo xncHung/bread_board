@@ -3,9 +3,11 @@ package io.xnchung.breadboard.framework.ksp
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getAnnotationsByType
+import com.google.devtools.ksp.getKotlinClassByName
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
+import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.FileLocation
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -17,6 +19,7 @@ import io.xnchung.breadboard.annotations.Component
 
 internal class ComponentVisitor(
     private val logger: KSPLogger,
+    private val resolver: Resolver,
     private val codeGenerator: CodeGenerator,
 ) : KSVisitorVoid() {
     override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
@@ -60,7 +63,7 @@ internal class ComponentVisitor(
         val paramHolders = componentFunction.getKSAnnotationsByType(Component::class).first().getArg<Iterable<KSAnnotation>>("params")
             ?.mapIndexed { i: Int, ksAnnotation: KSAnnotation ->
                 val param = component.params[i]
-                val fqn = TypeTokenAnnotation(ksAnnotation).parseToFqn().let {
+                val fqn = TypeTokenAnnotation(ksAnnotation, resolver).parseToFqn().let {
                     when (param.collectionType) {
                         CollectionType.None -> it
                         CollectionType.Array -> "${Array::class.qualifiedName}<$it>"
@@ -68,6 +71,8 @@ internal class ComponentVisitor(
                         CollectionType.List -> "${List::class.qualifiedName}<$it>"
                     }
                 }
+                val ksNameFromString = resolver.getKSNameFromString(fqn)
+                val mapJavaNameToKotlin = resolver.mapJavaNameToKotlin(ksNameFromString)
                 val qualifier = ksAnnotation.getArg<KSType>("qualifier")!!.declaration.toFullPath()
                 val defaultVaule = param.defaultValue.takeIf { it.isNotBlank() }?.let {
                     """
@@ -121,11 +126,11 @@ internal class ComponentVisitor(
 internal fun KSDeclaration.toFullPath() =
     qualifiedName?.asString() ?: "${packageName.asString()}.${simpleName.asString()}"
 
-private fun TypeTokenAnnotation.parseToFqn(): String {
-    val kClass = rawType?.declaration?.toFullPath()
-    val rawTypeFqn = requireNotNull(kClass)
-    val typeArgsFqn = if (!typeArgs.isNullOrEmpty()) {
-        typeArgs.joinToString(prefix = "<", postfix = ">") { it.parseToFqn() }
+internal fun ITypeTokenAnnotation.parseToFqn(forJava: Boolean = false): String {
+    val rawTypeFqn = requireNotNull(rawType)
+    val typeArgs1 = typeArgs
+    val typeArgsFqn = if (!typeArgs1.isNullOrEmpty()) {
+        typeArgs1.joinToString(prefix = "<", postfix = ">") { it.parseToFqn() }
     } else ""
     return "$rawTypeFqn$typeArgsFqn"
 }
@@ -147,7 +152,7 @@ package $componentPackage
 
 import io.xnchung.breadboard.model.*
 
-fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): Sample {
+fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): SampleContract {
     return Sample(
       name = ${componentName.quote()},
       description = ${componentDescription.quote()},
@@ -162,10 +167,11 @@ fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): Sample {
 }
 """.trimIndent()
 
-private class TypeTokenAnnotation(annotation: KSAnnotation) {
-    val rawType = annotation.getArg<KSType>("rawType")
-    val typeArgs = annotation.getArg<Iterable<KSAnnotation>>("typeArgs")?.map {
-        TypeTokenAnnotation(it)
+private class TypeTokenAnnotation(annotation: KSAnnotation, resolver: Resolver) : ITypeTokenAnnotation {
+    @OptIn(KspExperimental::class)
+    override val rawType = annotation.getArg<KSType>("rawType")?.declaration?.qualifiedName?.let { resolver.getKotlinClassByName(it) }?.toFullPath()
+    override val typeArgs = annotation.getArg<Iterable<KSAnnotation>>("typeArgs")?.map {
+        TypeTokenAnnotation(it, resolver)
     }
 
 }

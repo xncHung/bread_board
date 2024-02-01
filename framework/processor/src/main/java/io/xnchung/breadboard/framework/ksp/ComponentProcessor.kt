@@ -21,7 +21,6 @@ class ComponentProcessor(
     private val logger: KSPLogger,
     private val options: Map<String, String>
 ) : SymbolProcessor {
-    private val visitor = ComponentVisitor(logger, codeGenerator)
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(Component::class.java.name)
             .filter {
@@ -34,8 +33,8 @@ class ComponentProcessor(
                         isValid &&
                         !it.isAnnotationPresent(Deprecated::class)
             }.takeIf { it.iterator().hasNext() } ?: return emptyList()
-        ksAnnotatedSequence
-            .forEach { it.accept(visitor, Unit) }
+        val visitor = ComponentVisitor(logger, resolver, codeGenerator)
+        ksAnnotatedSequence.forEach { it.accept(visitor, Unit) }
         return emptyList()
     }
 

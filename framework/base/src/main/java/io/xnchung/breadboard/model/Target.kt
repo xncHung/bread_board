@@ -5,19 +5,29 @@ import android.app.Dialog
 import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.fragment.app.Fragment
+import java.util.function.Supplier
 import kotlin.reflect.KClass
 
 sealed class Target {
     data class TargetActivity(val targetClass: KClass<out Activity>) : Target()
+    data class TargetActivityJava(val targetClass: Class<out Activity>) : Target()
 
     data class TargetFragment(val targetClass: KClass<out Fragment>) : Target()
+    data class TargetFragmentJava(val targetClass: Class<out Fragment>) : Target()
+
     class TargetFragmentWithBuildFunc<out T : Fragment>(val buildFunc: () -> T) : Target()
+    class TargetFragmentWithJavaBuildFunc<T : Fragment>(val buildFunc: Supplier<T>) : Target()
 
     data class TargetDialog(val targetClass: KClass<out Dialog>) : Target()
     class TargetDialogWithBuildFunc<out T : Dialog>(val buildFunc: () -> T) : Target()
 
+    data class TargetDialogJava(val targetClass: Class<out Dialog>) : Target()
+    class TargetDialogWithJavaBuildFunc<T : Dialog>(val buildFunc: Supplier<T>) : Target()
+
     data class TargetView(val targetClass: KClass<out View>) : Target()
     class TargetViewWithBuildFunc<out T : View>(val buildFunc: () -> T) : Target()
+    data class TargetViewJava(val targetClass: Class<out View>) : Target()
+    class TargetViewWithJavaBuildFunc<T : View>(val buildFunc: Supplier<T>) : Target()
 
     class TargetCommonFunc(val func: () -> Unit) : Target()
 
@@ -25,7 +35,11 @@ sealed class Target {
 }
 
 inline fun <reified T : Activity> targetActivity() = Target.TargetActivity(T::class)
+fun <T : Activity> targetActivity(clz: Class<T>) = Target.TargetActivityJava(clz)
+
 inline fun <reified T : Fragment> targetFragment() = Target.TargetFragment(T::class)
+fun <T : Fragment> targetFragment(clz: Class<T>) = Target.TargetFragmentJava(clz)
+
 inline fun <reified T : Fragment> targetFragmentBuilder(noinline buildFunc: () -> T) = Target.TargetFragmentWithBuildFunc(buildFunc)
 inline fun <reified T : Dialog> targetDialog() = Target.TargetDialog(T::class)
 inline fun <reified T : Dialog> targetDialogBuilder(noinline buildFunc: () -> T) = Target.TargetDialogWithBuildFunc(buildFunc)
