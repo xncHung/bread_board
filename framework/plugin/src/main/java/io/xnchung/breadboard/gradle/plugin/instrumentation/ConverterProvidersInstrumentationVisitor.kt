@@ -7,7 +7,8 @@ import org.objectweb.asm.Opcodes
 
 internal class ConverterProvidersInstrumentationVisitor(
     classWriter: ClassWriter,
-    private val converterProviderMethodInfoList: List<AsmMethodInfo>
+    private val converterProviderMethodInfoList: List<AsmMethodInfo>,
+    private val components: List<AsmMethodInfo>
 ) : ClassVisitor(Opcodes.ASM9, classWriter) {
 
     override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor {
@@ -18,7 +19,7 @@ internal class ConverterProvidersInstrumentationVisitor(
             }
 
             name == "fillSamples" && descriptor == "(Ljava/util/List;)V" -> {
-                AllSamplesInstrumentationMethodVisitor(methodVisitor, converterProviderMethodInfoList)
+                AllSamplesInstrumentationMethodVisitor(methodVisitor, components)
             }
 
             else -> {

@@ -26,6 +26,11 @@ class CollectConverterFactoriesAndSamplesTransform(
     private val breadBoardExtension: BreadBoardExtension,
 ) : Transform() {
     val cacheDir = project.buildDir.resolve("intermediates/incremental/breadboardClassesCache")
+    private val targetClassNames = listOf(
+        ClassNames.ALL_SAMPLES_HOLDER_CLASS_ENTRY_NAME,
+        ClassNames.CONVERTER_CORE_CLASS_ENTRY_NAME,
+    )
+    private val methodsContainers = mutableMapOf<String, MutableList<AsmMethodInfo>>()
     override fun getName(): String {
         return "BreadboardCollectComponentsAndConverterFactories"
     }
@@ -57,16 +62,13 @@ class CollectConverterFactoriesAndSamplesTransform(
         Logging.getLogger("collect").warn("collect transform start")
         requireNotNull(inputs)
         requireNotNull(outputProvider)
-        val converterProviders = mutableListOf<AsmMethodInfo>()
-        val components = mutableListOf<AsmMethodInfo>()
-        var componentsJar: Pair<File, File>? = null
-        var converterProvidersJar: Pair<File, File>? = null
-
+        val targetJars = mutableMapOf<String, Pair<File, File>>()
         val visitor = CollectConverterProvidersAndComponentVisitor({
-            components.add(it)
+            methodsContainers.getOrPut(ClassNames.ALL_SAMPLES_HOLDER_CLASS_ENTRY_NAME) { mutableListOf() }.add(it)
         }) {
-            converterProviders.add(it)
+            methodsContainers.getOrPut(ClassNames.CONVERTER_CORE_CLASS_ENTRY_NAME) { mutableListOf() }.add(it)
         }
+        val targetNames = targetClassNames.asSequence()
         inputs.forEach { transformInput ->
             for (jarInput in transformInput.jarInputs) {
                 val source = jarInput.file
@@ -75,29 +77,26 @@ class CollectConverterFactoriesAndSamplesTransform(
                 var findHookHandle = false
                 val destName = name.substringBeforeLast(".jar")
                 val dest = outputProvider.getContentLocation(destName, jarInput.contentTypes, jarInput.scopes, Format.JAR)
-                if (componentsJar == null) {
-                    val samplesHolders = jarFile.getJarEntry(ClassNames.ALL_SAMPLES_HOLDER_CLASS_ENTRY_NAME)
+                targetNames.filter {
+                    it !in targetJars
+                }.forEach {
+                    val samplesHolders = jarFile.getJarEntry(it)
                     if (samplesHolders != null) {
-                        componentsJar = source to dest
+                        targetJars[it] = source to dest
                         findHookHandle = true
                     }
                 }
-                if (converterProvidersJar == null) {
-                    val converterCore = jarFile.getJarEntry(ClassNames.CONVERTER_CORE_CLASS_ENTRY_NAME)
-                    if (converterCore != null) {
-                        converterProvidersJar = source to dest
-                        findHookHandle = true
-                    }
-                }
-                if (!findHookHandle) {//not launcher or base lib
+
 //                        we do not need to scan external lib in most cases
-                    if (QualifiedContent.Scope.SUB_PROJECTS in jarInput.scopes || QualifiedContent.Scope.PROJECT in jarInput.scopes || !breadBoardExtension.excludeExternalLib) {
-                        jarFile.entries().asSequence().filter { !it.isDirectory && it.name.endsWith(".class") }
-                            .forEach {
-                                val inputStream = jarFile.getInputStream(it)
-                                ClassReader(inputStream).accept(visitor, ClassReader.SKIP_FRAMES.or(ClassReader.SKIP_CODE))
-                            }
-                    }
+                if (QualifiedContent.Scope.SUB_PROJECTS in jarInput.scopes || QualifiedContent.Scope.PROJECT in jarInput.scopes || !breadBoardExtension.excludeExternalLib) {
+                    jarFile.entries().asSequence().filter { !it.isDirectory && it.name.endsWith(".class") }
+                        .forEach {
+                            val inputStream = jarFile.getInputStream(it)
+                            ClassReader(inputStream).accept(visitor, ClassReader.SKIP_FRAMES.or(ClassReader.SKIP_CODE))
+                        }
+                }
+                if (!findHookHandle) {
+                    //launcher or base lib will be instrumentation,can't be hardlink or copy
                     hardLinkOrCopyFile(source, dest)
                 }
             }
@@ -114,46 +113,28 @@ class CollectConverterFactoriesAndSamplesTransform(
                 }
             }
         }
-
-        if (converterProviders.isNotEmpty()) {
-            val converterProvidersJarFile = requireNotNull(converterProvidersJar) {
-                "can't find the ConverterCore.class,check the dependency of breadboard-base lib"
-            }
-            converterProvidersJarFile.also {
-                val (source, dest) = it
-                instrumentationConverterAndSamplerProviders(dest, source, converterProviders)
-            }
-        } else {
-            converterProvidersJar?.apply {
-                hardLinkOrCopyFile(first, second)
-            }
-        }
-
-        if (componentsJar == converterProvidersJar && converterProviders.isNotEmpty()) {
-//            in most cases,componentsJar and converterProvidersJar is same Jar,we don't need to transform once again
-            return
-        }
-        if (components.isNotEmpty()) {
-            val componentJarFile = requireNotNull(componentsJar) {
-                "can't find the AllSamplesHolder.class,check the dependency of breadboard-launcher lib"
-            }
-            componentJarFile.also {
-                val (source, dest) = it
-                instrumentationConverterAndSamplerProviders(dest, source, components)
-            }
-        } else {
-            componentsJar?.apply {
-                hardLinkOrCopyFile(first, second)
-            }
+        targetJars.values.toSet().forEach {
+            val (source, dest) = it
+            instrumentationConverterAndSamplerProviders(
+                dest,
+                source,
+                methodsContainers[ClassNames.CONVERTER_CORE_CLASS_ENTRY_NAME] ?: emptyList(),
+                methodsContainers[ClassNames.ALL_SAMPLES_HOLDER_CLASS_ENTRY_NAME] ?: emptyList(),
+            )
         }
     }
 
-    private fun instrumentationConverterAndSamplerProviders(dest: File, source: File, converterProviders: MutableList<AsmMethodInfo>) {
+    private fun instrumentationConverterAndSamplerProviders(
+        dest: File,
+        source: File,
+        converterProviders: List<AsmMethodInfo>,
+        components: List<AsmMethodInfo>
+    ) {
         transformJar(
             dest,
             source,
-            { name == ClassNames.CONVERTER_CORE_CLASS_ENTRY_NAME || name == ClassNames.ALL_SAMPLES_HOLDER_CLASS_ENTRY_NAME }
-        ) { ConverterProvidersInstrumentationVisitor(this, converterProviders) }
+            { name in targetClassNames }
+        ) { ConverterProvidersInstrumentationVisitor(this, converterProviders, components) }
     }
 
 
