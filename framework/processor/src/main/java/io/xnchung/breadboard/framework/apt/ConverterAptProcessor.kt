@@ -20,6 +20,7 @@ import javax.lang.model.element.TypeElement
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.TypeMirror
 import javax.tools.Diagnostic
+import kotlin.coroutines.Continuation
 
 
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.ConverterProvider")
@@ -51,9 +52,38 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                         returnType.asElement().asType(),
                         elementUtils.getTypeElement(ProcessConstants.KOTLIN_JVM_FUNC_2).asType()
                     )
-                    val emptyParams = executableElement.parameters.isEmpty()
-                    fun argIsValid() = run {
+                    val isJvmFunc3 = typeUtils.isSameType(
+                        returnType.asElement().asType(),
+                        elementUtils.getTypeElement(ProcessConstants.KOTLIN_JVM_FUNC_3).asType()
+                    )
 
+                    fun suspendArgIsValid(): Boolean {
+                        return run {
+
+                            returnType.typeArguments.run {
+                                size == 4
+                                        //                                    first must be String
+                                        && typeUtils.isSameType(
+                                    first() as TypeMirror,
+                                    elementUtils.getTypeElement(String::class.java.canonicalName).asType()
+                                )
+                                        //                                    second must be Type
+                                        && typeUtils.isSameType(
+                                    this[1] as TypeMirror,
+                                    elementUtils.getTypeElement(Type::class.java.canonicalName).asType()
+                                )
+                                        //                                    third must be Continuation
+                                        && typeUtils.isSubtype(
+                                    (this[2] as DeclaredType).asElement().asType(),
+                                    elementUtils.getTypeElement(Continuation::class.java.canonicalName).asType()
+                                )
+
+                            }
+                        }
+                    }
+
+
+                    fun argIsValid() = run {
                         returnType.typeArguments.run {
                             size == 3
 //                                    first must be String
@@ -71,8 +101,11 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                         }
                     }
 
-                    if (isJvmFunc2 && emptyParams && it.isPublic && it.isStatic && argIsValid()) {
-                        createProviderClass(it)
+                    val emptyParams = executableElement.parameters.isEmpty()
+                    if (emptyParams && it.isPublic && it.isStatic &&
+                        (isJvmFunc2 && argIsValid() || isJvmFunc3 && suspendArgIsValid())
+                    ) {
+                        createProviderClass(it, isJvmFunc3)
                     } else {
                         processingEnv.messager.printMessage(
                             Diagnostic.Kind.ERROR,
@@ -87,15 +120,12 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                     null
                 }
             }
-//            val (statement, args) = requireNotNull(targetStatementArgs) {
-//                "@Component only supports Fragments, Activities,Dialog,View or Composable functions"
-//            }
 
         }
         return true
     }
 
-    private fun createProviderClass(element: ExecutableElement) {
+    private fun createProviderClass(element: ExecutableElement, isSuspend: Boolean) {
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         val converter = element.getAnnotation(ConverterProvider::class.java)
@@ -121,7 +151,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                         """
                         return new $typeRefLiteral("$qualifier",${converter.order},$typeRefLiteral.${element.simpleName}())
                         """.trimIndent(),
-                        ClassName.get("io.xnchung.breadboard.converters", "ConverterHolder.Normal"),
+                        ClassName.get("io.xnchung.breadboard.converters", if (isSuspend) "ConverterHolder.Suspend" else "ConverterHolder.Normal"),
                         methodClass
                     )
                     .build()

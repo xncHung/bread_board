@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.org.jetbrains.kotlin.android)
     alias(libs.plugins.google.ksp.plugin)
     alias(libs.plugins.breadboard)
+    id("kotlin-kapt")
 }
 
 android {
@@ -53,7 +54,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(project(mapOf("path" to ":framework:annotations")))
-    ksp(project(":framework:processor"))
+    kapt(project(":framework:processor"))
 //    annotationProcessor(project(":framework:processor"))
     debugImplementation(project(":framework:base"))
     testImplementation(libs.junit.junit)

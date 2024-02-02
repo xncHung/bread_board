@@ -54,5 +54,9 @@ fun String.quote() = """
     ""${'"'}$this""${'"'}
 """.trimIndent()
 
-fun String.quoteJava() = replace("[\\n|\\t|'|\"|\\\\|\b|\\r]".toRegex(), "\\\\\$0")
+fun String.quoteJava() = replace("['|\"|\\\\]".toRegex(), "\\\\\$0")
+    .replace("\n", "\\n")
+    .replace("\t", "\\t")
+    .replace("\b", "\\b")
+    .replace("\r", "\\r")
 
