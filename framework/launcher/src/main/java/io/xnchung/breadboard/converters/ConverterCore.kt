@@ -4,7 +4,7 @@ import android.util.Log
 import com.google.gson.JsonArray
 import com.google.gson.JsonParser
 import io.xnchung.breadboard.annotations.DefaultQualifier
-import io.xnchung.breadboard.model.ParamHolder
+import io.xnchung.breadboard.model.ParamHolderContract
 import io.xnchung.breadboard.model.TypeToken
 import java.lang.reflect.GenericArrayType
 import java.lang.reflect.ParameterizedType
@@ -35,7 +35,7 @@ internal object ConverterCore {
         mapOf(qualifiedName to listOf(provideBuiltinConverterFactory<Any>().let { ConverterHolder.Normal(qualifiedName, 0, it) }))
     }
 
-    suspend fun <T> convertParam(holder: ParamHolder<T>, input: String): T {
+    suspend fun <T> convertParam(holder: ParamHolderContract<T>, input: String): T {
         val qualifier = holder.qualifier
         val result = (convertWithConverterFactories(allExtConverterFactories, qualifier, input, holder)
             ?: convertWithConverterFactories(builtInConverterFactories, qualifier, input, holder))
@@ -48,7 +48,7 @@ internal object ConverterCore {
         converterFactories: Map<String, List<ConverterHolder>>,
         qualifier: String,
         input: String,
-        holder: ParamHolder<T>
+        holder: ParamHolderContract<T>
     ): Any? {
         val type = holder.getTypeParameterForParamHolder()
         val rawType = rawType(type)
@@ -100,7 +100,7 @@ internal object ConverterCore {
         }
     }
 
-    private fun ParamHolder<*>.getTypeParameterForParamHolder(): Type {
+    private fun ParamHolderContract<*>.getTypeParameterForParamHolder(): Type {
         return (this::class.java.genericInterfaces.first { it == TypeToken::class.java } as ParameterizedType).actualTypeArguments.first()
     }
 }

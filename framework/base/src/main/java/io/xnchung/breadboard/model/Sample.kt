@@ -9,7 +9,7 @@ sealed interface SampleContract {
     val target: Target
     val routes: List<String>
     val source: String
-    val paramHolders: List<ParamHolder<*>>
+    val paramHolders: List<ParamHolderContract<*>>
 }
 
 @Suppress("unused")
