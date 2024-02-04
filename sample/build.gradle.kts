@@ -63,9 +63,6 @@ android {
 //        }
 //    }
 }
-breadboard {
-    incremental = false
-}
 dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -78,7 +75,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     kapt(project(":framework:processor"))
-//    annotationProcessor(project(":framework:processor"))
     debugImplementation(project(":framework:launcher"))
     debugImplementation(project(":framework:base"))
     implementation(project(mapOf("path" to ":framework:annotations")))

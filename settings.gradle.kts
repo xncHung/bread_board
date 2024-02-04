@@ -1,5 +1,9 @@
 pluginManagement {
     repositories {
+        maven {
+            name = "localBuild"
+            url = uri("framework/plugin/main/build/repo")
+        }
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -14,12 +18,12 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BreadBoard"
+//includeBuild("framework/plugin")
 include(":sample")
 include(":framework:annotations")
 include(":framework:launcher")
 include(":framework:processor")
 include(":sample:bizs:bizhome")
 include(":framework:base")
-includeBuild("framework/plugin")
 include(":sample:bizs:bizPureJava")
 include(":samplepurejava")

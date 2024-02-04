@@ -26,25 +26,15 @@ import kotlin.coroutines.Continuation
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.ConverterProvider")
 @SupportedOptions(ProcessConstants.ARG_CODE_GEN_ENABLE)
 class ConverterAptProcessor : BaseComponentAptProcessor() {
-    override fun process(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
+    override fun realProcess(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
+        if (environment.processingOver()){
+            return true
+        }
         val components = environment.getElementsAnnotatedWith(ConverterProvider::class.java)
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         components.forEach {
             when (it.kind) {
-                ElementKind.CLASS -> {
-                    when {
-                        typeUtils.isSubtype(it.asType(), elementUtils.getTypeElement(ClassNames.ACTIVITY).asType()) -> {
-                            "${typeRefLiteral}.targetActivity(${typeRefLiteral}.class)" to listOf(
-                                ClassName.get("io.xnchung.breadboard.model", "TargetKt"),
-                                ClassName.get(it.asType())
-                            )
-                        }
-
-                        else -> "" to emptyList()
-                    }
-                }
-
                 ElementKind.METHOD -> {
                     val executableElement = it as ExecutableElement
                     val returnType = executableElement.returnType as DeclaredType

@@ -8,6 +8,8 @@ kotlin = "1.9.10"
 ksp = "1.9.10-1.0.13" # Should be updated when kotlin version is updated
 asm = "9.6"
 javassist = "3.26.0-GA"
+shadow = "7.1.2"
+gradle-publish = "1.2.1"
 
 [libraries]
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -22,3 +24,5 @@ asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 javaassist = { module = "org.javassist:javassist", version.ref = "javassist" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+shadow = { id = "com.github.johnrengelman.shadow", version.ref = "shadow" }
+gradle-publish = { id = 'com.gradle.plugin-publish', version.ref = 'gradle-publish' }

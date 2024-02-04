@@ -30,8 +30,11 @@ import javax.tools.Diagnostic
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.Component")
 @SupportedOptions(ProcessConstants.ARG_CODE_GEN_ENABLE)
 class ComponentAptProcessor : BaseComponentAptProcessor() {
-    override fun process(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
-        val components = environment.getElementsAnnotatedWith(Component::class.java)
+    override fun realProcess(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
+        if (environment.processingOver()) {
+            return true
+        }
+        val components = environment.getElementsAnnotatedWith(Component::class.java).filter { it in environment.rootElements }
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         components.forEach {

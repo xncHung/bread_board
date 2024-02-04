@@ -96,7 +96,7 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
         """
         ),
         Param(
-            key = "testHexIntArrayList", rawType = Int::class, collectionType = CollectionType.ArrayList, defaultValue = """
+            key = "testHexI ntArrayList", rawType = Int::class, collectionType = CollectionType.ArrayList, defaultValue = """
            ["1a4fdd","4df3ee"] 
         """, qualifier = HexInt::class
         ),
