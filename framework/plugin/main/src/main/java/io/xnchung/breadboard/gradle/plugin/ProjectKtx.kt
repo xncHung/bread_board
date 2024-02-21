@@ -1,9 +1,11 @@
 package io.xnchung.breadboard.gradle.plugin
 
+import io.xnchung.breadboard.gradle.plugin.apicompat.BreadBoardExtension
+import io.xnchung.breadboard.gradle.plugin.apicompat.CollectDataStrategy
 import org.gradle.api.Project
 
 
-internal  fun getKotlinPluginVersion(project: Project): String? {
+internal fun getKotlinPluginVersion(project: Project): String? {
     val plugin = project.plugins.findPlugin("kotlin-android") ?: return null
     return try {
         // No null checks below because we're catching all exceptions.
@@ -36,3 +38,4 @@ fun parseKotlinVersion(currVersion: String): KotlinVersion? {
         null
     }
 }
+

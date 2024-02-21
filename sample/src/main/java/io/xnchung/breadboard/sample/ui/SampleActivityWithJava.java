@@ -23,7 +23,7 @@ import io.xnchung.breadboard.sample.bizhome.ColorParam;
         routes = {"the routeUri"},
         tags = {"main biz", "home"},
         params = {
-                @Param(key = "testString", rawType = String.class, defaultValue = "testStringDefaultValue"),
+                @Param(key = "tesString", rawType = String.class, defaultValue = "testStringDefaultValue"),
                 @Param(key = "testInt", rawType = int.class, defaultValue = "1"),
                 @Param(key = "testFloat", rawType = float.class, defaultValue = "1.0"),
                 @Param(key = "testDouble", rawType = double.class, defaultValue = "3.4"),
@@ -56,6 +56,7 @@ public class SampleActivityWithJava extends ComponentActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_sample_with_java);
     }
 }

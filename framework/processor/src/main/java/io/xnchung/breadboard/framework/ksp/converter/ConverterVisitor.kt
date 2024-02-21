@@ -18,6 +18,7 @@ import io.xnchung.breadboard.framework.ksp.toFullPath
 class ConverterVisitor(
     private val logger: KSPLogger,
     private val codeGenerator: CodeGenerator,
+    private val isInstrumentation: Boolean,
 ) : KSVisitorVoid() {
     override fun visitFunctionDeclaration(function: KSFunctionDeclaration, data: Unit) {
         if (function.isValidConverterFactory) {
@@ -25,12 +26,14 @@ class ConverterVisitor(
             val fqn = ksName.asString()
             val name = fqn.replace(".", "_")
             val file = codeGenerator.createNewFile(
-                Dependencies(aggregating = true),
+                dependencies = function.containingFile?.let {
+                    Dependencies(aggregating = false, it)
+                } ?: Dependencies(aggregating = false),
                 packageName = ClassNames.CONVERTERS_PACKAGE_NAME,
                 fileName = "_$name"
             )
             file.use {
-                it.write(convertFqnTemplate(function).toByteArray())
+                it.write(convertFqnTemplate(isInstrumentation, function, "_${name}Module").toByteArray())
             }
         } else {
             logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static,the return type should be function type,like:(String,Type)->T? ,for java it should be ${ProcessConstants.KOTLIN_JVM_FUNC_2},like Function2<String,Type,Bean>")
@@ -40,7 +43,9 @@ class ConverterVisitor(
 
 @OptIn(KspExperimental::class)
 private fun convertFqnTemplate(
-    function: KSFunctionDeclaration
+    isInstrumentation: Boolean,
+    function: KSFunctionDeclaration,
+    moduleName: String
 ): String {
     val qualifier =
         function.qualifierAnnotation()?.annotationType?.resolve()?.declaration?.qualifiedName?.asString()
@@ -59,13 +64,35 @@ private fun convertFqnTemplate(
         ConverterHolder.Normal("$qualifier",${converterProvider.order},${function.toFullPath()}()) 
         """.trimIndent()
     }
-    return """
-package ${ClassNames.CONVERTERS_PACKAGE_NAME}
-
-  fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${name}ConverterProvider(): ConverterHolder {
-    return $initStatement
-  }
-""".trimIndent()
+    val func = """
+        fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${name}ConverterProvider(): ConverterHolder {
+            return $initStatement
+        }"""
+    return if (isInstrumentation) {
+        """
+            package ${ClassNames.CONVERTERS_PACKAGE_NAME}
+            $func
+           """.trimIndent()
+    } else {
+        """
+        package ${ClassNames.CONVERTERS_PACKAGE_NAME}
+        
+        import dagger.Module
+        import dagger.Provides
+        import dagger.hilt.InstallIn
+        import dagger.hilt.components.SingletonComponent
+        import dagger.multibindings.IntoSet
+        
+        @Module
+        @InstallIn(SingletonComponent::class)
+        class $moduleName {
+        
+            @Provides
+            @IntoSet
+            $func
+        }
+        """.trimIndent()
+    }
 
 
 }

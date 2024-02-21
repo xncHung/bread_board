@@ -12,16 +12,25 @@ import java.lang.reflect.Type
 
 internal object ConverterCore {
     private const val TAG = "ConverterCore"
+    private val convertersFromDi = mutableListOf<ConverterHolder>()
 
     /**
-     * it will be filled by gradle plugin
+     * it will be filled by gradle plugin or hilt
      */
-    internal val allExtConverterFactories: Map<String, List<ConverterHolder>> = mutableMapOf<String, MutableList<ConverterHolder>>().apply {
-        fillConverterFactories(this)
-    }.mapValues { it.value.sortedBy { it.order } }
-
+    internal val allExtConverterFactories: Map<String, List<ConverterHolder>> by lazy {
+        mutableMapOf<String, MutableList<ConverterHolder>>().apply {
+            fillConverterFactories(this)
+            convertersFromDi.forEach {
+                newConverterHolder(this, it)
+            }
+        }.mapValues { it.value.sortedBy { it.order } }
+    }
 
     private fun fillConverterFactories(mutableMap: MutableMap<String, MutableList<ConverterHolder>>) {
+    }
+
+    internal fun fillDiConverters(converters: Collection<ConverterHolder>) {
+        convertersFromDi.addAll(converters)
     }
 
     @Suppress("unused")

@@ -9,6 +9,8 @@ import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidBasePlugin
 import com.android.build.gradle.api.BaseVariant
 import io.xnchung.breadboard.gradle.plugin.apicompat.BreadBoardExtension
+import io.xnchung.breadboard.gradle.plugin.apicompat.CollectDataStrategy
+import io.xnchung.breadboard.gradle.plugin.apicompat.collectDataStrategy
 import io.xnchung.breadboard.gradle.plugin.apicompat.getAndroidComponentsExtension
 import io.xnchung.breadboard.gradle.plugin.task.addJavaTaskProcessorOptions
 import io.xnchung.breadboard.gradle.plugin.task.addKaptTaskProcessorOptions
@@ -47,7 +49,6 @@ class BreadBoardPlugin : Plugin<Project> {
         }
         val breadBoardExtension =
             extensions.create(BreadBoardExtension::class.java, "breadboard", BreadBoardExtensionImpl::class.java)
-
         configureBytecodeTransformASM(breadBoardExtension)
         configureProcessorFlags()
     }
@@ -63,12 +64,14 @@ class BreadBoardPlugin : Plugin<Project> {
 
     private fun Project.configureProcessorFlags() {
         val androidBaseExtension = baseExtension()
-        val atLeast170 = getKotlinPluginVersion(this)?.let { parseKotlinVersion(it) }?.let { it >= KotlinVersion(1, 7) }
-        if (atLeast170 == false) {
-            androidBaseExtension.forEachRootVariant {
+        val isApp = plugins.hasPlugin(AppPlugin::class.java)
+        fun kotlinAtLeast170() =
+            getKotlinPluginVersion(this)?.let { parseKotlinVersion(it) }?.let { it >= KotlinVersion(1, 7) }
+        androidBaseExtension.forEachRootVariant {
+            if (kotlinAtLeast170() == false) {
                 val debuggable = it.buildType.isDebuggable
                 it.javaCompileOptions.annotationProcessorOptions.compilerArgumentProviders.add(
-                    BreadBoardCmdLineArgumentProvider(false, debuggable)
+                    BreadBoardCmdLineArgumentProvider(false, debuggable, collectDataStrategy, isApp)
                 )
             }
         }
@@ -76,17 +79,16 @@ class BreadBoardPlugin : Plugin<Project> {
             buildType?.let { buildType -> androidBaseExtension.buildTypes.findByName(buildType) }?.also {
                 val debuggable = it.isDebuggable
                 val produceArgProvider: (Task) -> CommandLineArgumentProvider = {
-                    BreadBoardCmdLineArgumentProvider(it.isKspTask(), debuggable)
+                    BreadBoardCmdLineArgumentProvider(it.isKspTask(), debuggable, collectDataStrategy, isApp)
                 }
                 addKspTaskProcessorOptions(this, produceArgProvider)
-                addJavaTaskProcessorOptions(this, produceArgProvider)
-                if (atLeast170 == true) {
+                if (kotlinAtLeast170() != false) {
+                    addJavaTaskProcessorOptions(this, produceArgProvider)
                     addKaptTaskProcessorOptions(this, produceArgProvider)
                 }
             }
         }
     }
-
 
 
 //    private fun configureCompileClasspath(project: Project, breadBoardExtension: BreadBoardExtension) {

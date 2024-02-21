@@ -50,11 +50,9 @@ fun <T : Annotation> KSAnnotated.getKSAnnotationsByType(annotationKClass: KClass
 
 fun <T> KSAnnotation.getArg(param: String) = arguments.firstOrNull { it.name?.asString() == param }?.value as? T
 fun KSAnnotation.getStringArg(param: String) = getArg<String>(param).orEmpty()
-fun String.quote() = """
-    ""${'"'}$this""${'"'}
-""".trimIndent()
+fun String.quote() = """""${'"'}$this""${'"'}"""
 
-fun String.quoteJava() = replace("['|\"|\\\\]".toRegex(), "\\\\\$0")
+fun String.quoteJava() = replace("['|\"\\\\]".toRegex(), "\\\\\$0")
     .replace("\n", "\\n")
     .replace("\t", "\\t")
     .replace("\b", "\\b")

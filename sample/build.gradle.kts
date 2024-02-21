@@ -3,10 +3,10 @@ plugins {
     id("com.android.application")
     alias(libs.plugins.org.jetbrains.kotlin.android)
     alias(libs.plugins.google.ksp.plugin)
-    alias(libs.plugins.breadboard)
+    alias(libs.plugins.hilt)
     id("kotlin-kapt")
+    alias(libs.plugins.breadboard)
 }
-
 android {
     namespace = "io.xnchung.breadboard.sample"
     compileSdk = 33
@@ -63,6 +63,7 @@ android {
 //        }
 //    }
 }
+
 dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -71,13 +72,17 @@ dependencies {
     implementation(libs.compose.ui.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.material3)
-    implementation(project(mapOf("path" to ":sample:bizs:bizhome")))
+    implementation(project(":sample:bizs:bizhome"))
     implementation(libs.material)
     implementation(libs.constraintlayout)
+
+    implementation(libs.hilt.android)
     kapt(project(":framework:processor"))
+    kapt(libs.hilt.compiler)
+
     debugImplementation(project(":framework:launcher"))
     debugImplementation(project(":framework:base"))
-    implementation(project(mapOf("path" to ":framework:annotations")))
+    implementation(project(":framework:annotations"))
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

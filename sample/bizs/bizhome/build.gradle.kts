@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.google.ksp.plugin)
     alias(libs.plugins.breadboard)
     id("kotlin-kapt")
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -53,10 +54,14 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)
-    implementation(project(mapOf("path" to ":framework:annotations")))
-    kapt(project(":framework:processor"))
+    implementation(project(":framework:annotations"))
+    ksp(project(":framework:processor"))
 //    annotationProcessor(project(":framework:processor"))
     debugImplementation(project(":framework:base"))
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.android)
+
+
     testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

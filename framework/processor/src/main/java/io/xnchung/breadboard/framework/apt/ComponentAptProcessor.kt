@@ -1,8 +1,10 @@
 package io.xnchung.breadboard.framework.apt
 
+import com.squareup.javapoet.AnnotationSpec
 import com.squareup.javapoet.ClassName
 import com.squareup.javapoet.JavaFile
 import com.squareup.javapoet.MethodSpec
+import com.squareup.javapoet.ParameterizedTypeName
 import com.squareup.javapoet.TypeSpec
 import io.xnchung.breadboard.annotations.CollectionType
 import io.xnchung.breadboard.annotations.Component
@@ -14,6 +16,8 @@ import io.xnchung.breadboard.framework.ksp.ITypeTokenAnnotation
 import io.xnchung.breadboard.framework.ksp.parseToFqn
 import io.xnchung.breadboard.framework.ksp.quoteJava
 import java.io.IOException
+import java.util.Collections
+import javax.annotation.processing.ProcessingEnvironment
 import javax.annotation.processing.RoundEnvironment
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.annotation.processing.SupportedOptions
@@ -28,15 +32,24 @@ import javax.tools.Diagnostic
 
 
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.Component")
-@SupportedOptions(ProcessConstants.ARG_CODE_GEN_ENABLE)
+@SupportedOptions(value = [ProcessConstants.ARG_CODE_GEN_ENABLE, ProcessConstants.ARG_CODE_GEN_STRATEGY, ProcessConstants.ARG_CODE_GEN_IS_APP])
 class ComponentAptProcessor : BaseComponentAptProcessor() {
-    override fun realProcess(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
+    override fun realProcess(
+        annotations: MutableSet<out TypeElement>,
+        environment: RoundEnvironment,
+        isInstrumentation: Boolean,
+        isApp: Boolean
+    ): Boolean {
         if (environment.processingOver()) {
             return true
         }
         val components = environment.getElementsAnnotatedWith(Component::class.java).filter { it in environment.rootElements }
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
+        if (isApp && !isInstrumentation) {
+            generateDiActivityFoJava(processingEnv)
+            generateEmptySetDi(processingEnv, ClassNames.SAMPLE_CONTRACT_FQN)
+        }
         components.forEach {
             processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "element=${it.javaClass} ${it.simpleName}")
             val targetStatementArgs = when (it.kind) {
@@ -62,12 +75,12 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
             val (statement, args) = requireNotNull(targetStatementArgs) {
                 "@Component only supports Fragments, Activities,Dialog,View or Composable functions"
             }
-            createProviderClass(it, statement, *args.toTypedArray())
+            createProviderClass(it, statement, isInstrumentation, *args.toTypedArray())
         }
         return true
     }
 
-    private fun createProviderClass(element: Element, componentTarget: String, vararg args: Any?) {
+    private fun createProviderClass(element: Element, componentTarget: String, isInstrumentation: Boolean, vararg args: Any?) {
         val component = element.getAnnotation(Component::class.java)
         val annotationMirror = element.annotationMirrors.first { it.annotationType.asElement().toFullPath() == Component::class.java.canonicalName }
         val annotationValue = annotationMirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("params") }?.value
@@ -94,7 +107,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                 CollectionType.List -> "[]"
             }
             """
-                   new ParamHolder<$fqn>("${param.key}","${defaultVaule.quoteJava()}","$qualifier") 
+                   new ParamHolder<$fqn>("${param.key}","${param.desc.quoteJava()}","${defaultVaule.quoteJava()}","$qualifier") 
                 """.trimIndent()
         }.toTypedArray()
 
@@ -113,8 +126,10 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
              ${component.routes.joinToString("\n") { "routes.add(\"$it\");" }}
             
         """.trimIndent()
+        val fullPath = element.toFullPath()
         val returnStatement = """
             return new ${typeRefLiteral}(
+            "$fullPath",
              "${component.name.quoteJava()}",
              "${component.description.quoteJava()}",
              tags,
@@ -126,7 +141,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
              params
             )
         """.trimIndent()
-        val fileName = "_breadboard" + element.toFullPath().replace(".", "_") + "Generated"
+        val fileName = "_breadboard" + fullPath.replace(".", "_") + "Generated"
         val targetClassName = ClassName.get("io.xnchung.breadboard.model", "Target")
         val generatedClass: TypeSpec = TypeSpec.classBuilder(fileName)
             .addModifiers(Modifier.PUBLIC)
@@ -149,8 +164,18 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                     )
                     .addStatement("${typeRefLiteral} target = $componentTarget", targetClassName, *args)
                     .addStatement(returnStatement, ClassName.get("io.xnchung.breadboard.model", "Sample"))
+                    .run {
+                        if (!isInstrumentation) {
+                            addAnnotation(ClassName.get("dagger", "Provides"))
+                            addAnnotation(ClassName.get("dagger.multibindings", "IntoSet"))
+                        } else this
+                    }
                     .build()
-            )
+            ).run {
+                if (!isInstrumentation) {
+                    addModuleAnnotation()
+                } else this
+            }
             .build()
 
         val javaFile: JavaFile = JavaFile.builder(ClassNames.SAMPLES_PACKAGE_NAME, generatedClass)
@@ -167,6 +192,14 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
     }
 
 }
+
+internal fun TypeSpec.Builder.addModuleAnnotation(): TypeSpec.Builder {
+    addAnnotation(ClassName.get("dagger", "Module"))
+    val installIn = ClassName.get("dagger.hilt", "InstallIn")
+    val singletonComponent = ClassName.get("dagger.hilt.components", "SingletonComponent")
+    return addAnnotation(AnnotationSpec.builder(installIn).addMember("value", "${typeRefLiteral}.class", singletonComponent).build())
+}
+
 
 private fun AnnotationMirror.rawTypeFqnFromMirror() =
     (elementValues.entries.first { it.key.simpleName.contentEquals("rawType") }.value as AnnotationValue).value.let {
@@ -198,3 +231,63 @@ internal class TypeTokenAnnotation(annotation: TypeToken, mirror: AnnotationMirr
 }
 
 internal const val typeRefLiteral = "${'$'}T"
+
+internal fun generateDiActivityFoJava(processingEnv: ProcessingEnvironment) {
+
+    val diActivityFqn = ClassNames.DI_ACTIVITY_FQN
+    if (processingEnv.elementUtils.getTypeElement(diActivityFqn) != null) {
+        return
+    }
+    val packageName = diActivityFqn.substringBeforeLast(".")
+    val className = diActivityFqn.substringAfterLast(".")
+    val superClass = ClassName.get(packageName, "BreadBoardLauncherActivityWithDIDeclaration")
+    val entryPointAnnotation = ClassName.get("dagger.hilt.android", "AndroidEntryPoint")
+    val typeSpec = TypeSpec.classBuilder(className)
+        .addModifiers(Modifier.PUBLIC)
+        .superclass(superClass)
+        .addAnnotation(entryPointAnnotation)
+        .build()
+    val javaFile = JavaFile.builder(packageName, typeSpec).build()
+    try {
+        javaFile.writeTo(processingEnv.filer)
+    } catch (e: IOException) {
+        processingEnv.messager.printMessage(
+            Diagnostic.Kind.ERROR,
+            "breadboard >>>Could not write generated file: " + e.message
+        )
+    }
+}
+
+internal fun generateEmptySetDi(processingEnv: ProcessingEnvironment, targetFqn: String) {
+    val packageName = ClassNames.DI_EMPTY_PACKAGE_NAME
+    val targetPkgName = targetFqn.substringBeforeLast(".")
+    val className = targetFqn.substringAfterLast(".")
+    val generateClassName = "${className}Module"
+    if (processingEnv.elementUtils.getTypeElement("$packageName.$generateClassName") != null) {
+        return
+    }
+    if (processingEnv.elementUtils.getTypeElement(targetFqn) == null) {
+        return
+    }
+    val typeSpec = TypeSpec.classBuilder(generateClassName)
+        .addModifiers(Modifier.PUBLIC)
+        .addModuleAnnotation()
+        .addMethod(
+            MethodSpec.methodBuilder("provideEmpty")
+                .addAnnotation(ClassName.get("dagger", "Provides"))
+                .addAnnotation(ClassName.get("dagger.multibindings", "ElementsIntoSet"))
+                .returns(ParameterizedTypeName.get(ClassName.get(Set::class.java), ClassName.get(targetPkgName, className)))
+                .addStatement("return $typeRefLiteral.EMPTY_SET", ClassName.get(Collections::class.java))
+                .build()
+        )
+        .build()
+    val javaFile = JavaFile.builder(packageName, typeSpec).build()
+    try {
+        javaFile.writeTo(processingEnv.filer)
+    } catch (e: IOException) {
+        processingEnv.messager.printMessage(
+            Diagnostic.Kind.ERROR,
+            "breadboard >>>Could not write generated file: " + e.message
+        )
+    }
+}

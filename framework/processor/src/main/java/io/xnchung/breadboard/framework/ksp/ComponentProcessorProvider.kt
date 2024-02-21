@@ -5,11 +5,13 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 
 class ComponentProcessorProvider : BaseSymbolProcessorProvider() {
 
-    override fun realCreate(environment: SymbolProcessorEnvironment): SymbolProcessor {
+    override fun realCreate(environment: SymbolProcessorEnvironment, isInstrumentation: Boolean, isApp: Boolean): SymbolProcessor {
         return ComponentProcessor(
             codeGenerator = environment.codeGenerator,
             logger = environment.logger,
-            options = environment.options
+            options = environment.options,
+            isInstrumentation = isInstrumentation,
+            isApp = isApp
         )
     }
 }

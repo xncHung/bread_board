@@ -1,5 +1,3 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 @Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -27,7 +25,7 @@ configurations {
 }
 
 
-val pluginId = "io.xncHung.breadboard.plugin"
+val pluginId = "io.xnchung.breadboard.plugin"
 val pluginArtifactId = "breadboard-android-gradle-plugin"
 publishing {
     repositories {
@@ -38,19 +36,19 @@ publishing {
     }
 }
 gradlePlugin {
-//    website.set("https://github.com")
-//    vcsUrl.set("https://github.com")
+    website.set("https://github.com")
+    vcsUrl.set("https://github.com")
     plugins {
         create("breadboard") {
             id = pluginId
             displayName = "Breadboard"
             description = "Gradle Plugin for Breadboard"
-//            tags.add("Breadboard")
+            tags.add("Breadboard")
             implementationClass = "io.xnchung.breadboard.gradle.plugin.BreadBoardPlugin"
         }
     }
 }
-group = "io.xncHung.breadboard"
+group = "io.xnchung.breadboard"
 version = "1.0"
 dependencies {
     "shadowed"(project(":agp-compat-impl"))

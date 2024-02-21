@@ -1,6 +1,7 @@
 package io.xnchung.breadboard.model
 
 sealed interface SampleContract {
+    val id: String
     val name: String
     val description: String
     val tags: List<String>
@@ -14,6 +15,7 @@ sealed interface SampleContract {
 
 @Suppress("unused")
 data class Sample(
+    override val id: String,
     override val name: String,
     override val description: String,
     override val tags: List<String>,

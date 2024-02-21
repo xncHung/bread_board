@@ -21,6 +21,7 @@ internal class ComponentVisitor(
     private val logger: KSPLogger,
     private val resolver: Resolver,
     private val codeGenerator: CodeGenerator,
+    private val isInstrumentation: Boolean,
 ) : KSVisitorVoid() {
     override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
         val target = classDeclaration.getAllSuperTypes().firstNotNullOfOrNull {
@@ -57,7 +58,8 @@ internal class ComponentVisitor(
     @OptIn(KspExperimental::class)
     private fun createModule(componentFunction: KSDeclaration, target: String) {
         val packageName = ClassNames.SAMPLES_PACKAGE_NAME
-        val componentFile = "_${componentFunction.toFullPath().replace(".", "_")}"
+        val declarationFullPath = componentFunction.toFullPath()
+        val componentFile = "_${declarationFullPath.replace(".", "_")}"
         val component = componentFunction.getAnnotationsByType(Component::class).first()
 //        访问注解中的 KClass 存在 bug,https://github.com/google/ksp/issues/888
         val paramHolders = componentFunction.getKSAnnotationsByType(Component::class).first().getArg<Iterable<KSAnnotation>>("params")
@@ -71,36 +73,33 @@ internal class ComponentVisitor(
                         CollectionType.List -> "${List::class.qualifiedName}<$it>"
                     }
                 }
-                val ksNameFromString = resolver.getKSNameFromString(fqn)
-                val mapJavaNameToKotlin = resolver.mapJavaNameToKotlin(ksNameFromString)
                 val qualifier = ksAnnotation.getArg<KSType>("qualifier")!!.declaration.toFullPath()
                 val defaultVaule = param.defaultValue.takeIf { it.isNotBlank() }?.let {
-                    """
-                    ""${'"'}${param.defaultValue}""${'"'}.trimIndent()
-                    """.trimIndent()
+                    """""${'"'}${param.defaultValue.lines().joinToString("\n") { "           $it" }}""${'"'}.trimIndent()"""
                 } ?: when (param.collectionType) {
                     CollectionType.None -> "\"\""
-                    CollectionType.Array,
-                    CollectionType.ArrayList,
-                    CollectionType.List -> "\"[]\""
+                    CollectionType.Array, CollectionType.ArrayList, CollectionType.List -> "\"[]\""
                 }
                 """
-                   ParamHolder<$fqn>(key="${param.key}",defaultValue=$defaultVaule,qualifier="$qualifier") 
-                """.trimIndent()
+                   ParamHolder<$fqn>(key="${param.key}",
+                   desc="${param.desc}",
+                   defaultValue=$defaultVaule,
+                   qualifier="$qualifier")"""
             }?.toTypedArray() ?: emptyArray()
         val componentSource = component.sourcePath.ifBlank { getFilePath(componentFunction) }
 
 
+        val dependencies = componentFunction.containingFile?.let {
+            Dependencies(aggregating = false, it)
+        } ?: Dependencies(aggregating = false)
         val file = codeGenerator.createNewFile(
-            dependencies = Dependencies(
-                aggregating = true,
-            ),
-            packageName = packageName,
-            fileName = "${componentFile}Component"
+            dependencies = dependencies, packageName = packageName, fileName = "${componentFile}Component"
         )
         file.use { stream ->
             stream.write(
                 componentTemplate(
+                    isInstrumentation,
+                    id = declarationFullPath,
                     componentFile = componentFile,
                     componentPackage = packageName,
                     componentName = component.name,
@@ -123,8 +122,7 @@ internal class ComponentVisitor(
     }
 }
 
-internal fun KSDeclaration.toFullPath() =
-    qualifiedName?.asString() ?: "${packageName.asString()}.${simpleName.asString()}"
+internal fun KSDeclaration.toFullPath() = qualifiedName?.asString() ?: "${packageName.asString()}.${simpleName.asString()}"
 
 internal fun ITypeTokenAnnotation.parseToFqn(forJava: Boolean = false): String {
     val rawTypeFqn = requireNotNull(rawType)
@@ -136,6 +134,8 @@ internal fun ITypeTokenAnnotation.parseToFqn(forJava: Boolean = false): String {
 }
 
 private fun componentTemplate(
+    isInstrumentation: Boolean,
+    id: String,
     componentFile: String,
     componentPackage: String,
     componentName: String,
@@ -147,25 +147,59 @@ private fun componentTemplate(
     componentTarget: String,
     componentRoute: Array<String>,
     paramHolders: Array<String>,
-) = """
-package $componentPackage
-
-import io.xnchung.breadboard.model.*
-
-fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): SampleContract {
-    return Sample(
-      name = ${componentName.quote()},
-      description = ${componentDescription.quote()},
-      tags =  listOf(${componentTags.joinToString(",") { "\"$it\"" }}),
-      documentation = ${componentDocs.quote()},
-      owners = listOf(${componentOwners.joinToString(",") { "\"$it\"" }}),
-      target = $componentTarget,
-      routes=  listOf(${componentRoute.joinToString(",") { "\"$it\"" }}),
-      source =  "$componentSource",
-      paramHolders = listOf(${paramHolders.joinToString(",\n") { it }}),
-    )
+): String {
+    val func =
+        """fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${componentFile}Component(): SampleContract {
+            return Sample(
+              id="$id",
+              name = ${componentName.quote()},
+              description = ${componentDescription.quote()},
+              tags =  listOf(${componentTags.joinToString(",") { "\"$it\"" }}),
+              documentation = ${componentDocs.quote()},
+              owners = listOf(${componentOwners.joinToString(",") { "\"$it\"" }}),
+              target = $componentTarget,
+              routes=  listOf(${componentRoute.joinToString(",") { "\"$it\"" }}),
+              source =  "$componentSource",
+              paramHolders = listOf(${
+            paramHolders.joinToString("") {
+                """
+                  $it,"""
+            }
+        }),
+            )
+        }
+        """
+    return if (isInstrumentation) {
+        """
+        package $componentPackage
+        
+        import io.xnchung.breadboard.model.*
+        
+        $func
+        """.trimIndent()
+    } else {
+        """
+        package $componentPackage
+        
+        import io.xnchung.breadboard.model.*
+        
+        import dagger.Module
+        import dagger.Provides
+        import dagger.hilt.InstallIn
+        import dagger.hilt.components.SingletonComponent
+        import dagger.multibindings.IntoSet
+        
+        @Module
+        @InstallIn(SingletonComponent::class)
+        class ${componentFile}Module {
+        
+            @Provides
+            @IntoSet
+            $func
+        }
+        """.trimIndent()
+    }
 }
-""".trimIndent()
 
 private class TypeTokenAnnotation(annotation: KSAnnotation, resolver: Resolver) : ITypeTokenAnnotation {
     @OptIn(KspExperimental::class)

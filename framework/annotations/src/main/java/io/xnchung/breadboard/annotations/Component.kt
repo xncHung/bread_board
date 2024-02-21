@@ -25,7 +25,7 @@ annotation class Param(
     val defaultValue: String = "",
     val desc: String = "",
     val collectionType: CollectionType = CollectionType.None,
-    val qualifier: KClass<out Annotation> = DefaultQualifier::class
+    val qualifier: KClass<out Annotation> = DefaultQualifier::class,
 )
 
 @MustBeDocumented
@@ -34,6 +34,7 @@ annotation class TypeToken(
     val rawType: KClass<*>,
     val typeArgs: Array<TypeToken> = []
 )
+
 
 enum class CollectionType {
     None,

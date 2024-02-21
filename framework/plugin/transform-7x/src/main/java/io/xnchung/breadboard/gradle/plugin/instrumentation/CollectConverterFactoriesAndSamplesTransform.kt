@@ -19,6 +19,8 @@ import java.util.jar.JarEntry
 import java.util.jar.JarFile
 import java.util.jar.JarOutputStream
 import io.xnchung.breadboard.gradle.plugin.ClassNames
+import io.xnchung.breadboard.gradle.plugin.apicompat.CollectDataStrategy
+import io.xnchung.breadboard.gradle.plugin.apicompat.collectDataStrategy
 import io.xnchung.breadboard.io.xnchung.breadboard.gradle.plugin.instrumentation.AsmMethodInfo
 import io.xnchung.breadboard.io.xnchung.breadboard.gradle.plugin.instrumentation.CollectConverterProvidersAndComponentVisitor
 import io.xnchung.breadboard.io.xnchung.breadboard.gradle.plugin.instrumentation.ConverterProvidersInstrumentationVisitor
@@ -35,7 +37,7 @@ class CollectConverterFactoriesAndSamplesTransform(
     )
     private val methodsContainers = mutableMapOf<String, MutableList<AsmMethodInfo>>()
     override fun getName(): String {
-        return "BreadboardCollectComponentsAndConverterFactories"
+        return "BreadboardCollectData"
     }
 
     override fun applyToVariant(variant: VariantInfo): Boolean {

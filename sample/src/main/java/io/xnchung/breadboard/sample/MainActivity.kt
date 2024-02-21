@@ -20,18 +20,16 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
 @Component(
     name = "home",
     description = "the MainActivity of sample app",
-    documentation = """
-       the prd or design url" 
-    """,
+    documentation = """the prd or design url"""",
     owners = ["david", "zhangsan"],
     routes = ["the routeUri"],
     tags = ["main biz", "home"],
     params = [
-        Param(key = "testString", rawType = String::class, defaultValue = "testStringDefaultValue"),
+        Param(key = "testS  tring", rawType = String::class, defaultValue = "testStringDefaultValue"),
         Param(key = "testInt", rawType = Int::class, defaultValue = "1"),
         Param(key = "testFloat", rawType = Float::class, defaultValue = "1.0"),
         Param(key = "testDouble", rawType = Double::class, defaultValue = "3.4"),
-        Param(key = "testBoolean", rawType = Boolean::class, defaultValue = "true"),
+        Param(key = "test   B  oolean", rawType = Boolean::class, defaultValue = "true"),
         Param(key = "testHexInt", rawType = Int::class, defaultValue = "1a4fdd", qualifier = HexInt::class),
         Param(key = "testColor", rawType = Int::class, defaultValue = "#ff0000", qualifier = ColorParam::class),
         Param(
@@ -112,6 +110,7 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
         )
     ]
 )
+//@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"

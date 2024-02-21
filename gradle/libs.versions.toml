@@ -95,5 +95,6 @@ org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org
 com-android-library = { id = "com.android.library", version.ref = "agp" }
 org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "org-jetbrains-kotlin-android" }
 google-ksp-plugin = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-breadboard = { id = "io.xncHung.breadboard.plugin", version.ref = "breadboard" }
+breadboard = { id = "io.xnchung.breadboard.plugin", version.ref = "breadboard" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

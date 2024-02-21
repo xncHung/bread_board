@@ -51,7 +51,7 @@ internal fun Project.addKaptTaskProcessorOptions(
         """
     The KAPT plugin was detected to be applied but its task class could not be found.
 
-    This is an indicator that the Hilt Gradle Plugin is using a different class loader because
+    This is an indicator that the Breadboard Gradle Plugin is using a different class loader because
     it was declared at the root while KAPT was declared in a sub-project. To fix this, declare
     both plugins in the same scope, i.e. either at the root (without applying them) or at the
     sub-projects.

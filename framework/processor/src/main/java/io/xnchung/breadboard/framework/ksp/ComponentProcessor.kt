@@ -2,8 +2,10 @@ package io.xnchung.breadboard.framework.ksp
 
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.containingFile
+import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
@@ -19,9 +21,15 @@ import io.xnchung.breadboard.annotations.Component
 class ComponentProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger,
-    private val options: Map<String, String>
+    private val options: Map<String, String>,
+    private val isInstrumentation: Boolean,
+    val isApp: Boolean
 ) : SymbolProcessor {
     override fun process(resolver: Resolver): List<KSAnnotated> {
+        if (isApp && !isInstrumentation) {
+            generateDiActivity(resolver, codeGenerator)
+            generateEmptyDi(resolver, codeGenerator, ClassNames.SAMPLE_CONTRACT_FQN)
+        }
         val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(Component::class.java.name)
             .filter {
                 logger.warn("handle ksAnnotated = ${it::class} isclass=${it is KSClassDeclaration},isFunction=${it is KSFunctionDeclaration},the content=$it")
@@ -32,12 +40,81 @@ class ComponentProcessor(
                 (it is KSFunctionDeclaration || it is KSClassDeclaration) &&
                         isValid &&
                         !it.isAnnotationPresent(Deprecated::class)
-            }.takeIf { it.iterator().hasNext() } ?: return emptyList()
-        val visitor = ComponentVisitor(logger, resolver, codeGenerator)
-        ksAnnotatedSequence.forEach { it.accept(visitor, Unit) }
+            }.takeIf { it.iterator().hasNext() }
+        ksAnnotatedSequence?.apply {
+            val visitor = ComponentVisitor(logger, resolver, codeGenerator, isInstrumentation)
+            forEach { it.accept(visitor, Unit) }
+        }
         return emptyList()
     }
+}
 
+internal fun generateEmptyDi(resolver: Resolver, codeGenerator: CodeGenerator, fqn: String) {
+    val ksName = resolver.getKSNameFromString(fqn)
+    val name = fqn.replace(".", "_").let { "${it}_Module" }
+    if (resolver.getClassDeclarationByName("${ClassNames.DI_EMPTY_PACKAGE_NAME}.${name}") != null) {
+        return
+    }
+    if (resolver.getClassDeclarationByName(fqn) == null) {
+        return
+    }
+    val file = codeGenerator.createNewFile(
+        dependencies = Dependencies(
+            aggregating = false,
+        ),
+        packageName = ClassNames.DI_EMPTY_PACKAGE_NAME,
+        fileName = "_Empty_DI_for_${name}"
+    )
+    file.use { stream ->
+        val clzDeclaration =
+            """
+               package ${ClassNames.DI_EMPTY_PACKAGE_NAME}
+                
+               import dagger.Module
+               import dagger.Provides
+               import dagger.hilt.InstallIn
+               import dagger.hilt.components.SingletonComponent
+               import dagger.multibindings.ElementsIntoSet
+               import $fqn
+                
+               @Module
+               @InstallIn(SingletonComponent::class)
+               object $name {
+                   @Provides
+                   @ElementsIntoSet
+                   fun provideEmpty(): Set<${ksName.getShortName()}> = emptySet()
+               }
+               """.trimIndent()
+        stream.write(clzDeclaration.toByteArray())
+    }
+}
 
+@OptIn(KspExperimental::class)
+internal fun generateDiActivity(resolver: Resolver, codeGenerator: CodeGenerator) {
+    val ksName = resolver.getKSNameFromString(ClassNames.DI_ACTIVITY_FQN)
+    if (resolver.getClassDeclarationByName(ksName) != null) {
+        return
+    }
+    val className = ksName.getShortName()
+    val packageName = ksName.getQualifier().substringBefore(".$className")
+    val file = codeGenerator.createNewFile(
+        dependencies = Dependencies(
+            aggregating = false,
+        ),
+        packageName = packageName,
+        fileName = className
+    )
+    file.use { stream ->
+        val clzDeclaration =
+            """
+                package $packageName
+                
+                import dagger.hilt.android.AndroidEntryPoint
+                
+                @AndroidEntryPoint
+                class $className: BreadBoardLauncherActivityWithDIDeclaration()
+                """.trimIndent()
+        stream.write(clzDeclaration.toByteArray())
+    }
 }
 

@@ -11,13 +11,21 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.validate
 import io.xnchung.breadboard.annotations.ConverterProvider
+import io.xnchung.breadboard.framework.ksp.ClassNames
+import io.xnchung.breadboard.framework.ksp.generateEmptyDi
 
-class ConverterProcessor(val codeGenerator: CodeGenerator, val logger: KSPLogger, val options: Map<String, String>) : SymbolProcessor {
-    private val visitor = ConverterVisitor(logger, codeGenerator)
+class ConverterProcessor(
+    private val codeGenerator: CodeGenerator,
+    private val logger: KSPLogger,
+    private val options: Map<String, String>,
+    private val isInstrumentation: Boolean,
+    val isApp: Boolean
+) : SymbolProcessor {
+    private val visitor = ConverterVisitor(logger, codeGenerator, isInstrumentation)
 
     @OptIn(KspExperimental::class)
     override fun process(resolver: Resolver): List<KSAnnotated> {
-        resolver.getSymbolsWithAnnotation(ConverterProvider::class.java.name)
+        val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(ConverterProvider::class.java.name)
             .filter {
                 val isValid = it.validate()
                 if (!isValid) {
@@ -28,9 +36,13 @@ class ConverterProcessor(val codeGenerator: CodeGenerator, val logger: KSPLogger
                         isValid &&
                         !it.isAnnotationPresent(Deprecated::class)
             }
+        ksAnnotatedSequence
             .forEach {
                 it.accept(visitor, Unit)
             }
+        if (isApp && !isInstrumentation && !ksAnnotatedSequence.iterator().hasNext()) {
+            generateEmptyDi(resolver, codeGenerator, ClassNames.CONVERTER_HOLDER_FQN)
+        }
         return emptyList()
     }
 

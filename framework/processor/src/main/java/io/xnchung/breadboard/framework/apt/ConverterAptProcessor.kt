@@ -26,9 +26,17 @@ import kotlin.coroutines.Continuation
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.ConverterProvider")
 @SupportedOptions(ProcessConstants.ARG_CODE_GEN_ENABLE)
 class ConverterAptProcessor : BaseComponentAptProcessor() {
-    override fun realProcess(annotations: MutableSet<out TypeElement>, environment: RoundEnvironment): Boolean {
-        if (environment.processingOver()){
+    override fun realProcess(
+        annotations: MutableSet<out TypeElement>,
+        environment: RoundEnvironment,
+        isInstrumentation: Boolean,
+        isApp: Boolean
+    ): Boolean {
+        if (environment.processingOver()) {
             return true
+        }
+        if (isApp && !isInstrumentation) {
+            generateEmptySetDi(processingEnv, ClassNames.CONVERTER_HOLDER_FQN)
         }
         val components = environment.getElementsAnnotatedWith(ConverterProvider::class.java)
         val typeUtils = processingEnv.typeUtils
@@ -95,7 +103,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                     if (emptyParams && it.isPublic && it.isStatic &&
                         (isJvmFunc2 && argIsValid() || isJvmFunc3 && suspendArgIsValid())
                     ) {
-                        createProviderClass(it, isJvmFunc3)
+                        createProviderClass(it, isJvmFunc3, isInstrumentation)
                     } else {
                         processingEnv.messager.printMessage(
                             Diagnostic.Kind.ERROR,
@@ -115,7 +123,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
         return true
     }
 
-    private fun createProviderClass(element: ExecutableElement, isSuspend: Boolean) {
+    private fun createProviderClass(element: ExecutableElement, isSuspend: Boolean, isInstrumentation: Boolean) {
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         val converter = element.getAnnotation(ConverterProvider::class.java)
@@ -144,8 +152,19 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                         ClassName.get("io.xnchung.breadboard.converters", if (isSuspend) "ConverterHolder.Suspend" else "ConverterHolder.Normal"),
                         methodClass
                     )
+                    .run {
+                        if (!isInstrumentation) {
+                            addAnnotation(ClassName.get("dagger", "Provides"))
+                            addAnnotation(ClassName.get("dagger.multibindings", "IntoSet"))
+                        } else this
+                    }
                     .build()
             )
+            .run {
+                if (!isInstrumentation) {
+                    addModuleAnnotation()
+                } else this
+            }
             .build()
         val javaFile: JavaFile = JavaFile.builder(ClassNames.CONVERTERS_PACKAGE_NAME, generatedClass)
             .build()
