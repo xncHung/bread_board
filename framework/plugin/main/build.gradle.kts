@@ -20,10 +20,6 @@ tasks.shadowJar {
         exclude("org.jetbrains:annotations:")
     }
 }
-configurations {
-    compileOnly.get().extendsFrom(shadow.get())
-}
-
 
 val pluginId = "io.xnchung.breadboard.plugin"
 val pluginArtifactId = "breadboard-android-gradle-plugin"

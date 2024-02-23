@@ -12,13 +12,16 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        maven {
+            name = "localMockRepo"
+            url = uri("framework/localRepo")
+        }
         google()
         mavenCentral()
     }
 }
 
 rootProject.name = "BreadBoard"
-//includeBuild("framework/plugin")
 include(":sample")
 include(":framework:annotations")
 include(":framework:launcher")

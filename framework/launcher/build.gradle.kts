@@ -1,3 +1,5 @@
+import io.xnchung.breadboard.declareMavenPublish
+
 @Suppress("DSL_SCOPE_VIOLATION") // TODO: Remove once KTIJ-19369 is fixed
 plugins {
     alias(libs.plugins.com.android.library)
@@ -43,6 +45,14 @@ android {
 //        }
 //    }
 }
+version = libs.versions.breadboard.launcher.get()
+publishing {
+    declareMavenPublish(project) {
+        afterEvaluate {
+            from(components["release"])
+        }
+    }
+}
 
 dependencies {
 
@@ -57,8 +67,8 @@ dependencies {
     implementation(libs.compose.ui.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.material3)
-    implementation(project(mapOf("path" to ":framework:annotations")))
-    implementation(project(":framework:base"))
+    implementation(libs.breadboard.annotations)
+    implementation(libs.breadboard.base)
     testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

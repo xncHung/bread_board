@@ -23,7 +23,11 @@ material = "1.8.0"
 lifecycle-runtime-ktx = "2.6.1"
 activity-compose = "1.7.0"
 constraintlayout = "2.1.4"
-breadboard = "1.0"
+breadboard-plugin = "1.0"
+breadboard-annotations = "1.0"
+breadboard-base = "1.0"
+breadboard-launcher = "1.0"
+breadboard-processor = "1.0"
 [libraries]
 android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 metalavaGradle = "me.tylerbwong.gradle:metalava-gradle:0.1.9"
@@ -89,12 +93,16 @@ material = { group = "com.google.android.material", name = "material", version.r
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle-runtime-ktx" }
 activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
 constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
+breadboard-annotations = { group = "io.xnchung.breadboard", name = "annotations", version.ref = "breadboard-annotations" }
+breadboard-base = { group = "io.xnchung.breadboard", name = "base", version.ref = "breadboard-base" }
+breadboard-launcher = { group = "io.xnchung.breadboard", name = "launcher", version.ref = "breadboard-launcher" }
+breadboard-processor = { group = "io.xnchung.breadboard", name = "processor", version.ref = "breadboard-processor" }
 
 [plugins]
 org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "org-jetbrains-kotlin-jvm" }
 com-android-library = { id = "com.android.library", version.ref = "agp" }
 org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "org-jetbrains-kotlin-android" }
 google-ksp-plugin = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-breadboard = { id = "io.xnchung.breadboard.plugin", version.ref = "breadboard" }
+breadboard = { id = "io.xnchung.breadboard.plugin", version.ref = "breadboard-plugin" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

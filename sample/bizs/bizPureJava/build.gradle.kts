@@ -32,9 +32,9 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     testImplementation(libs.junit.junit)
-    debugImplementation(project(":framework:base"))
-    annotationProcessor(project(":framework:processor"))
-    implementation(project(mapOf("path" to ":framework:annotations")))
+    debugImplementation(libs.breadboard.base)
+    annotationProcessor(libs.breadboard.processor)
+    implementation(libs.breadboard.annotations)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)
 }

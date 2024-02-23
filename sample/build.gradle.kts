@@ -77,12 +77,12 @@ dependencies {
     implementation(libs.constraintlayout)
 
     implementation(libs.hilt.android)
-    kapt(project(":framework:processor"))
+    kapt(libs.breadboard.processor)
     kapt(libs.hilt.compiler)
 
-    debugImplementation(project(":framework:launcher"))
-    debugImplementation(project(":framework:base"))
-    implementation(project(":framework:annotations"))
+    debugImplementation(libs.breadboard.launcher)
+    debugImplementation(libs.breadboard.base)
+    implementation(libs.breadboard.annotations)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

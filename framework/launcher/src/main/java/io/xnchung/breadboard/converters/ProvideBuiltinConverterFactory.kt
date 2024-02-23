@@ -8,7 +8,7 @@ internal val gson by lazy {
     Gson()
 }
 
-fun <T> provideBuiltinConverterFactory(): String.(Type) -> T? = {
+internal fun <T> provideBuiltinConverterFactory(): String.(Type) -> T? = {
     try {
         gson.fromJson<T>(this, TypeToken.get(it).type)
     } catch (e: Exception) {

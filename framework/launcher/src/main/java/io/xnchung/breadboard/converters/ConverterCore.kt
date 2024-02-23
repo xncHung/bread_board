@@ -44,7 +44,7 @@ internal object ConverterCore {
         mapOf(qualifiedName to listOf(provideBuiltinConverterFactory<Any>().let { ConverterHolder.Normal(qualifiedName, 0, it) }))
     }
 
-    suspend fun <T> convertParam(holder: ParamHolderContract<T>, input: String): T {
+    internal suspend fun <T> convertParam(holder: ParamHolderContract<T>, input: String): T {
         val qualifier = holder.qualifier
         val result = (convertWithConverterFactories(allExtConverterFactories, qualifier, input, holder)
             ?: convertWithConverterFactories(builtInConverterFactories, qualifier, input, holder))
