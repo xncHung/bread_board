@@ -16,7 +16,7 @@ android {
         minSdk = 21
         targetSdk = 33
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -80,7 +80,7 @@ dependencies {
     kapt(libs.breadboard.processor)
     kapt(libs.hilt.compiler)
 
-    debugImplementation(libs.breadboard.launcher)
+    implementation(libs.breadboard.launcher)
     debugImplementation(libs.breadboard.base)
     implementation(libs.breadboard.annotations)
     testImplementation(libs.junit)

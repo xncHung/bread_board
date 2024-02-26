@@ -45,7 +45,7 @@ gradlePlugin {
     }
 }
 group = "io.xnchung.breadboard"
-version = "1.0"
+version = "1.0.0"
 dependencies {
     "shadowed"(project(":agp-compat-impl"))
     compileOnly(libs.android.gradle.plugin)
