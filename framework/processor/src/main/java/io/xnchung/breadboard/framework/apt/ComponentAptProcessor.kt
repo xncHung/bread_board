@@ -5,14 +5,15 @@ import com.squareup.javapoet.ClassName
 import com.squareup.javapoet.JavaFile
 import com.squareup.javapoet.MethodSpec
 import com.squareup.javapoet.ParameterizedTypeName
+import com.squareup.javapoet.TypeName
 import com.squareup.javapoet.TypeSpec
 import io.xnchung.breadboard.annotations.CollectionType
 import io.xnchung.breadboard.annotations.Component
+import io.xnchung.breadboard.annotations.Ignore
 import io.xnchung.breadboard.annotations.Param
-import io.xnchung.breadboard.annotations.TypeToken
+import io.xnchung.breadboard.annotations.ParamProvider
 import io.xnchung.breadboard.framework.ProcessConstants
 import io.xnchung.breadboard.framework.ksp.ClassNames
-import io.xnchung.breadboard.framework.ksp.ITypeTokenAnnotation
 import io.xnchung.breadboard.framework.ksp.parseToFqn
 import io.xnchung.breadboard.framework.ksp.quoteJava
 import java.io.IOException
@@ -25,9 +26,16 @@ import javax.lang.model.element.AnnotationMirror
 import javax.lang.model.element.AnnotationValue
 import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
+import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
+import javax.lang.model.element.VariableElement
+import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.PrimitiveType
+import javax.lang.model.type.TypeKind
+import javax.lang.model.type.TypeMirror
+import javax.lang.model.util.Elements
+import javax.lang.model.util.Types
 import javax.tools.Diagnostic
 
 
@@ -43,32 +51,90 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
         if (environment.processingOver()) {
             return true
         }
-        val components = environment.getElementsAnnotatedWith(Component::class.java).filter { it in environment.rootElements }
+        val components = environment.getElementsAnnotatedWith(Component::class.java)
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         if (isApp && !isInstrumentation) {
             generateDiActivityFoJava(processingEnv)
             generateEmptySetDi(processingEnv, ClassNames.SAMPLE_CONTRACT_FQN)
         }
+        val targetKt = ClassName.get("io.xnchung.breadboard.model", "TargetKt")
         components.forEach {
             processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "element=${it.javaClass} ${it.simpleName}")
             val targetStatementArgs = when (it.kind) {
                 ElementKind.CLASS -> {
-                    when {
-                        typeUtils.isSubtype(it.asType(), elementUtils.getTypeElement(ClassNames.ACTIVITY).asType()) -> {
-                            "${typeRefLiteral}.targetActivity(${typeRefLiteral}.class)" to listOf(
-                                ClassName.get("io.xnchung.breadboard.model", "TargetKt"),
-                                ClassName.get(it.asType())
-                            )
-                        }
-
-                        else -> "" to emptyList()
-                    }
+                    val asType = it.asType()
+                    val commonArgs = listOf(
+                        targetKt,
+                        ClassName.get(asType)
+                    )
+                    getTargetJavaPoetArgs(
+                        typeUtils = typeUtils,
+                        type = asType,
+                        elementUtils = elementUtils,
+                        handleActivity = {
+                            "${typeRefLiteral}.targetActivity(${typeRefLiteral}.class)" to commonArgs
+                        },
+                        handleFragment = {
+                            "${typeRefLiteral}.targetFragment(${typeRefLiteral}.class)" to commonArgs
+                        },
+                        handleDialog = {
+                            "${typeRefLiteral}.targetDialog(${typeRefLiteral}.class)" to commonArgs
+                        },
+                        handleView = {
+                            "${typeRefLiteral}.targetView(${typeRefLiteral}.class)" to commonArgs
+                        },
+                        default = { null }
+                    )
                 }
 
-                ElementKind.METHOD -> "" to emptyList()
+                ElementKind.METHOD -> {
+                    val element = it as ExecutableElement
+                    val returnType = element.returnType
+                    val targetArg = listOf(targetKt)
+                    val isComposable = element.annotationMirrors.any { it.annotationType.asElement().toFullPath() == ClassNames.COMPOSABLE }
+                    val (statement, args) = if (isComposable) {
+                        val typeName = requireNotNull((element.enclosingElement as? TypeElement)?.qualifiedName?.toString()) {
+                            "can't find the class declaration for method ${element.simpleName}"
+                        }
+                        val simpleName = element.simpleName.toString()
+                        """"$typeName","$simpleName"""" to emptyList()
+                    } else {
+                        generateCallMethodWithParamMapLambada(element, typeUtils, elementUtils)
+                    }
+                    getTargetJavaPoetArgs(
+                        typeUtils = typeUtils,
+                        type = returnType,
+                        elementUtils = elementUtils,
+                        handleActivity = {
+                            "${typeRefLiteral}.targetCommonFuncJava($statement)" to targetArg + args
+                        },
+                        handleFragment = {
+                            "${typeRefLiteral}.targetFragmentBuilderJava($statement)" to targetArg + args
+                        },
+                        handleDialog = {
+                            "${typeRefLiteral}.targetDialogBuilderJava($statement)" to targetArg + args
+                        },
+                        handleView = {
+                            "${typeRefLiteral}.targetViewBuilderJava($statement)" to targetArg + args
+                        },
+                        default = {
+                            if (isComposable) {
+                                "${typeRefLiteral}.targetComposableJava($statement)" to targetArg + args
+                            } else {
+                                if (returnType.kind == TypeKind.VOID) {
+                                    "${typeRefLiteral}.targetCommonFuncJavaVoid($statement)" to targetArg + args
+                                } else {
+                                    "${typeRefLiteral}.targetCommonFuncJava($statement)" to targetArg + args
+                                }
+                            }
+                        }
+
+                    )
+                }
+
                 else -> {
-                    processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "not supported breadboard component")
+                    processingEnv.messager.printMessage(Diagnostic.Kind.ERROR, "not supported breadboard component")
                     null
                 }
             }
@@ -80,53 +146,91 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
         return true
     }
 
-    private fun createProviderClass(element: Element, componentTarget: String, isInstrumentation: Boolean, vararg args: Any?) {
-        val component = element.getAnnotation(Component::class.java)
-        val annotationMirror = element.annotationMirrors.first { it.annotationType.asElement().toFullPath() == Component::class.java.canonicalName }
-        val annotationValue = annotationMirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("params") }?.value
-        val paramsAnnotationMirrors = annotationValue?.value as List<*>
-        val paramHolders = component.params.mapIndexed { i: Int, param: Param ->
-            val mirror = paramsAnnotationMirrors[i] as AnnotationMirror
-            val fqn = ParamTypeTokenAnnotation(param, mirror).parseToFqn().let {
-                when (param.collectionType) {
-                    CollectionType.None -> it
-                    CollectionType.Array -> "$it[]"
-                    CollectionType.ArrayList -> "${ArrayList::class.qualifiedName}<$it>"
-                    CollectionType.List -> "${List::class.qualifiedName}<$it>"
+    private fun getTargetJavaPoetArgs(
+        typeUtils: Types,
+        type: TypeMirror?,
+        elementUtils: Elements,
+        handleActivity: () -> Pair<String, List<Any>>?,
+        handleFragment: () -> Pair<String, List<Any>>?,
+        handleDialog: () -> Pair<String, List<Any>>?,
+        handleView: () -> Pair<String, List<Any>>?,
+        default: () -> Pair<String, List<Any>>?
+    ): Pair<String, List<Any>>? = when {
+        typeUtils.isSubtype(type, elementUtils.getTypeElement(ClassNames.ACTIVITY).asType()) -> handleActivity()
+
+        typeUtils.isSubtype(type, elementUtils.getTypeElement(ClassNames.FRAGMENT).asType()) -> handleFragment()
+
+        typeUtils.isSubtype(type, elementUtils.getTypeElement(ClassNames.DIALOG).asType()) -> handleDialog()
+
+        typeUtils.isSubtype(type, elementUtils.getTypeElement(ClassNames.VIEW).asType()) -> handleView()
+
+        else -> default()
+    }
+
+    private fun ComponentAptProcessor.generateCallMethodWithParamMapLambada(
+        element: ExecutableElement,
+        typeUtils: Types,
+        elementUtils: Elements,
+    ): Pair<String, List<Any>> {
+        val elementSequence = element.parameters
+        val paramsStatement = elementSequence.joinToString {
+            checkIgnoreAnnotation(it)
+            val key = it.parameterKey(typeUtils, elementUtils)
+            """(${typeRefLiteral})paramsMap.get("$key")"""
+        }
+        val paramStatementArgs = elementSequence.map { ClassName.get(it.asType()) }
+        return run {
+            val callElement = element.staticCallElement()
+            when {
+                callElement != null -> {
+                    val methodClass = ClassName.get(if (callElement.isClass) callElement.asType() else callElement.enclosingElement.asType())
+                    val fieldDot = if (callElement.isClass) "" else "${callElement.simpleName}."
+                    "paramsMap ->${typeRefLiteral}.${fieldDot}${element.simpleName}($paramsStatement)" to listOf(methodClass) + paramStatementArgs
+                }
+
+                element.enclosingElement?.enclosedElements?.any { it.kind == ElementKind.CONSTRUCTOR && !it.isPrivate && (it as ExecutableElement).parameters.isEmpty() } == true -> {
+//                    考虑内部类会有无限套娃的问题，这里不考虑。
+                    val typeName = ClassName.get(element.enclosingElement.asType())
+                    "paramsMap -> new ${typeRefLiteral}().${element.simpleName}($paramsStatement)" to listOf(typeName) + paramStatementArgs
+                }
+
+                else -> {
+                    error("component method must be static/no private or the component class must has an empty parameter and no private constructor,method = ${element.toFullPath()}")
+
                 }
             }
-            val qualifier =
-                mirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("qualifier") }?.value?.value?.toString().orEmpty()
+        }
+    }
 
-            val defaultVaule = param.defaultValue.takeIf { it.isNotBlank() }?.let {
-                param.defaultValue
-            } ?: when (param.collectionType) {
-                CollectionType.None -> ""
-                CollectionType.Array,
-                CollectionType.ArrayList,
-                CollectionType.List -> "[]"
-            }
-            """
-                   new ParamHolder<$fqn>("${param.key}","${param.desc.quoteJava()}","${defaultVaule.quoteJava()}","$qualifier") 
-                """.trimIndent()
-        }.toTypedArray()
+    private fun checkIgnoreAnnotation(variableElement: VariableElement) {
+        check(variableElement.getAnnotation(Ignore::class.java) == null) {
+            "@Ignore Annotation has no effect for apt/kapt,please migration to ksp or remove the @Ignore Annotation"
+        }
+    }
 
+    private fun VariableElement.parameterKey(
+        typeUtils: Types,
+        elementUtils: Elements
+    ): CharSequence? = if (typeUtils.isSameType(asType(), elementUtils.getTypeElement(ClassNames.CONTEXT).asType())) {
+        ProcessConstants.PARAMS_MAP_CONTEXT_KEY
+    } else {
+        simpleName
+    }
 
-        val initStatement = """
-             ${typeRefLiteral}<${typeRefLiteral}<?>> params = new ${typeRefLiteral}<>();
-             ${paramHolders.joinToString("\n") { "params.add($it);" }}
-             
-             ${typeRefLiteral}<String> tags = new ${typeRefLiteral}<>();
-             ${component.tags.joinToString("\n") { "tags.add(\"$it\");" }}
-             
-             ${typeRefLiteral}<String> owners = new ${typeRefLiteral}<>();
-             ${component.owners.joinToString("\n") { "owners.add(\"$it\");" }}
-            
-             ${typeRefLiteral}<String> routes = new ${typeRefLiteral}<>();
-             ${component.routes.joinToString("\n") { "routes.add(\"$it\");" }}
-            
-        """.trimIndent()
-        val fullPath = element.toFullPath()
+    private fun createProviderClass(element: Element, componentTarget: String, isInstrumentation: Boolean, vararg args: Any?) {
+        val component = element.getAnnotation(Component::class.java)
+        val paramHolders = if (element is ExecutableElement) {
+            getParamsFromMethodParameters(element)
+        } else {
+            getParamsFromAnnotation(element, component)
+        }
+        val fullPath = element.toFullPath() + (element as? ExecutableElement)?.run {
+            val existOverload = enclosingElement.enclosedElements.any { it !== this && it.kind == kind && it.simpleName == simpleName }
+            enclosingElement.toFullPath() + "." + simpleName.toString() + if (existOverload) {
+//                取参数的sampleName 也有冲突的可能，但概率很低，如果有此情况，应该由开发者修改代码
+                parameters.joinToString("_", "_") { "${(it.asType() as DeclaredType).asElement().simpleName}" }
+            } else ""
+        }.orEmpty()
         val returnStatement = """
             return new ${typeRefLiteral}(
             "$fullPath",
@@ -141,28 +245,44 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
              params
             )
         """.trimIndent()
-        val fileName = "_breadboard" + fullPath.replace(".", "_") + "Generated"
+        val fileName = ("${ClassNames.GEN_FILE_NAME_PREFIX}${fullPath.replace(".", "_")}Generated")
         val targetClassName = ClassName.get("io.xnchung.breadboard.model", "Target")
         val generatedClass: TypeSpec = TypeSpec.classBuilder(fileName)
             .addModifiers(Modifier.PUBLIC)
             .addMethod(
-                MethodSpec.methodBuilder("${ClassNames.GEN_FUNC_NAME_SUFFIX}${fileName}Component")
+                MethodSpec.methodBuilder("_provide_component")
                     .addModifiers(Modifier.PUBLIC)
                     .addModifiers(Modifier.STATIC)
                     .returns(ClassName.bestGuess(ClassNames.SAMPLE_CONTRACT_FQN))
-                    .addCode(
-                        initStatement,
+                    .addStatement(
+                        "${typeRefLiteral}<${typeRefLiteral}<?>> params = new ${typeRefLiteral}<>();",
                         List::class.java,
-                        ClassName.get("io.xnchung.breadboard.model", "ParamHolder"),
-                        ArrayList::class.java,
-                        ArrayList::class.java,
-                        ArrayList::class.java,
-                        ArrayList::class.java,
-                        ArrayList::class.java,
-                        ArrayList::class.java,
-                        ArrayList::class.java,
+                        ClassName.get("io.xnchung.breadboard.model", "ParamHolderContract"),
+                        ArrayList::class.java
                     )
-                    .addStatement("${typeRefLiteral} target = $componentTarget", targetClassName, *args)
+                    .run {
+                        paramHolders.fold(this) { builder: MethodSpec.Builder, pair: Pair<String, List<Any>> ->
+                            builder.addStatement("params.add(${pair.first});", *pair.second.toTypedArray())
+                        }
+                    }.run {
+                        listOf(
+                            "tags" to component.tags,
+                            "owners" to component.owners,
+                            "routes" to component.routes
+                        ).fold(this) { builder, field ->
+                            val fieldName = field.first
+                            builder.addStatement(
+                                "${typeRefLiteral}<String> $fieldName = new ${typeRefLiteral}<>();",
+                                List::class.java,
+                                ArrayList::class.java
+                            ).run {
+                                field.second.fold(this) { builder, s ->
+                                    builder.addStatement("$fieldName.add(\"$s\")")
+                                }
+                            }
+                        }
+                    }
+                    .addStatement("$typeRefLiteral target = $componentTarget", targetClassName, *args)
                     .addStatement(returnStatement, ClassName.get("io.xnchung.breadboard.model", "Sample"))
                     .run {
                         if (!isInstrumentation) {
@@ -178,7 +298,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
             }
             .build()
 
-        val javaFile: JavaFile = JavaFile.builder(ClassNames.SAMPLES_PACKAGE_NAME, generatedClass)
+        val javaFile: JavaFile = JavaFile.builder(processingEnv.elementUtils.getPackageOf(element).toString(), generatedClass)
             .build()
 
         try {
@@ -191,6 +311,93 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
         }
     }
 
+    private fun getParamsFromMethodParameters(element: ExecutableElement) = element.parameters
+        .map {
+            checkIgnoreAnnotation(it)
+            val typeName = ClassName.get(it.asType()).let { if (it.isPrimitive) it.box() else it }
+            // TODO: get desc from comment
+            val parameterKey = it.parameterKey(processingEnv.typeUtils, processingEnv.elementUtils)
+            val annotationMirror =
+                element.annotationMirrors.firstOrNull { it.annotationType.asElement().toFullPath() == ParamProvider::class.java.canonicalName }
+            val providerType =
+                annotationMirror?.elementValues?.entries?.first { it.key.simpleName.contentEquals("provider") }?.value?.value as? TypeMirror
+            val (providerStatement, providerArgs) = if (providerType != null) {
+                getInitStatement(providerType)
+            } else {
+                "null" to listOf()
+            }
+            val statement =
+                """new ${typeRefLiteral}<${typeRefLiteral}>("$parameterKey","","","",${providerStatement})""".trimIndent()
+            val args = listOf<Any>(
+                ClassName.get("io.xnchung.breadboard.model", "ParamHolder"),
+                typeName,
+            ) + providerArgs
+            statement to args
+        }.toTypedArray()
+
+    private fun getParamsFromAnnotation(
+        element: Element,
+        component: Component
+    ): Array<Pair<String, List<Any>>> {
+        val annotationMirror =
+            element.annotationMirrors.first { it.annotationType.asElement().toFullPath() == Component::class.java.canonicalName }
+        val annotationValue = annotationMirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("params") }?.value
+        val paramsAnnotationMirrors = annotationValue?.value as? List<*>
+        val paramHolders = component.params.mapIndexedNotNull { i: Int, param: Param ->
+            val mirror = paramsAnnotationMirrors?.get(i) as? AnnotationMirror ?: return@mapIndexedNotNull null
+            val fqn = ParamTypeTokenAnnotation(param, mirror).parseToFqn(true).let {
+                when (param.collectionType) {
+                    CollectionType.None -> it
+                    CollectionType.Array -> "$it[]"
+                    CollectionType.ArrayList -> "${ArrayList::class.qualifiedName}<$it>"
+                    CollectionType.List -> "${List::class.qualifiedName}<$it>"
+                }
+            }
+            val qualifier =
+                mirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("qualifier") }?.value?.value?.toString().orEmpty()
+
+            val providerType =
+                mirror.elementValues?.entries?.firstOrNull { it.key.simpleName.contentEquals("provider") }?.value?.value as? TypeMirror
+            val (providerStatement, providerArgs) = if (providerType != null) {
+                getInitStatement(providerType)
+            } else {
+                "null" to listOf()
+            }
+            val defaultValue = param.defaultValue.takeIf { it.isNotBlank() }?.let {
+                param.defaultValue
+            } ?: when (param.collectionType) {
+                CollectionType.None -> ""
+                CollectionType.Array,
+                CollectionType.ArrayList,
+                CollectionType.List -> "[]"
+            }
+            val statement =
+                """new ${typeRefLiteral}<$fqn>("${param.key}","${param.desc.quoteJava()}","${defaultValue.quoteJava()}","$qualifier",${providerStatement})""".trimIndent()
+            statement to listOf<Any>(
+                ClassName.get("io.xnchung.breadboard.model", "ParamHolder"),
+            ) + providerArgs
+        }.toTypedArray()
+        return paramHolders
+    }
+
+    private fun getInitStatement(providerType: TypeMirror?): Pair<String, List<TypeName>> {
+        val asElement = processingEnv.typeUtils.asElement(providerType)
+        val allMembers = processingEnv.elementUtils.getAllMembers(asElement as TypeElement)
+        val constructors =
+            allMembers.filter { it.kind == ElementKind.CONSTRUCTOR && it.isPublic && (it as ExecutableElement).parameters.isEmpty() }
+        val statement = if (constructors.isNotEmpty()) {
+            "new ${typeRefLiteral}()"
+        } else {
+            //                    kotlin object
+            allMembers.firstOrNull { it.kind == ElementKind.FIELD && it.isStatic && it.asType() == providerType }?.let {
+                "${typeRefLiteral}.${it.simpleName}"
+            }
+        }
+        return requireNotNull(statement) {
+            "can't find the public and empty constructor or static instance for $providerType"
+        } to listOf(ClassName.get(providerType))
+    }
+
 }
 
 internal fun TypeSpec.Builder.addModuleAnnotation(): TypeSpec.Builder {
@@ -201,34 +408,10 @@ internal fun TypeSpec.Builder.addModuleAnnotation(): TypeSpec.Builder {
 }
 
 
-private fun AnnotationMirror.rawTypeFqnFromMirror() =
+internal fun AnnotationMirror.rawTypeFqnFromMirror() =
     (elementValues.entries.first { it.key.simpleName.contentEquals("rawType") }.value as AnnotationValue).value.let {
         if (it is PrimitiveType) ClassName.get(it).box() else it
     }.toString().replace("java.lang.", "")
-
-internal class ParamTypeTokenAnnotation(annotation: Param, mirror: AnnotationMirror) : ITypeTokenAnnotation {
-    override val rawType = mirror.rawTypeFqnFromMirror()
-
-
-    override val typeArgs = run {
-        val list = mirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("typeArgs") }?.value?.value as? List<*>
-        annotation.typeArgs.mapIndexed { index, it ->
-            val annotationMirror = list?.get(index) as AnnotationMirror
-            TypeTokenAnnotation(it, annotationMirror)
-        }
-    }
-
-}
-
-internal class TypeTokenAnnotation(annotation: TypeToken, mirror: AnnotationMirror) : ITypeTokenAnnotation {
-    override val rawType = mirror.rawTypeFqnFromMirror()
-    override val typeArgs = run {
-        val list = mirror.elementValues.entries.firstOrNull { it.key.simpleName.contentEquals("typeArgs") }?.value?.value as? List<*>
-        annotation.typeArgs.mapIndexed { index, it ->
-            TypeTokenAnnotation(it, list?.get(index) as AnnotationMirror)
-        }
-    }
-}
 
 internal const val typeRefLiteral = "${'$'}T"
 
@@ -291,3 +474,5 @@ internal fun generateEmptySetDi(processingEnv: ProcessingEnvironment, targetFqn:
         )
     }
 }
+
+fun List<VariableElement>.filterIgnore() = asSequence().filter { it.getAnnotation(Ignore::class.java) == null }

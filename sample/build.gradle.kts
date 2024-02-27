@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.hilt)
     id("kotlin-kapt")
     alias(libs.plugins.breadboard)
+    id("kotlin-parcelize")
 }
 android {
     namespace = "io.xnchung.breadboard.sample"
@@ -80,7 +81,7 @@ dependencies {
     kapt(libs.breadboard.processor)
     kapt(libs.hilt.compiler)
 
-    implementation(libs.breadboard.launcher)
+    debugImplementation(libs.breadboard.launcher)
     debugImplementation(libs.breadboard.base)
     implementation(libs.breadboard.annotations)
     testImplementation(libs.junit)

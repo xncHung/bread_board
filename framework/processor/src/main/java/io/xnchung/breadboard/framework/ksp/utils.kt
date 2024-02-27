@@ -1,9 +1,11 @@
 package io.xnchung.breadboard.framework.ksp
 
 import com.google.devtools.ksp.isPublic
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.FunctionKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import io.xnchung.breadboard.annotations.ParamQualifier
@@ -31,7 +33,7 @@ val KSFunctionDeclaration.returnStringConverterFunc
             }
         } == true
 
-val KSFunctionDeclaration.isStaticOrTopLevel get() = functionKind == FunctionKind.TOP_LEVEL || functionKind == FunctionKind.STATIC
+val KSFunctionDeclaration.isStaticOrTopLevelOrObject get() = functionKind == FunctionKind.TOP_LEVEL || functionKind == FunctionKind.STATIC || (parent as? KSClassDeclaration)?.run { classKind == ClassKind.OBJECT || isCompanionObject } == true
 val KSFunctionDeclaration.isSuspend get() = Modifier.SUSPEND in modifiers
 val KSFunctionDeclaration.stringExtReceiver get() = extensionReceiver?.resolve()?.declaration?.qualifiedName?.asString() == String::class.qualifiedName
 val KSFunctionDeclaration.isValidConverterFactory
@@ -39,7 +41,7 @@ val KSFunctionDeclaration.isValidConverterFactory
         isPublic() &&
                 parameters.isEmpty() &&
                 returnStringConverterFunc &&
-                isStaticOrTopLevel
+                isStaticOrTopLevelOrObject
 
 fun <T : Annotation> KSAnnotated.getKSAnnotationsByType(annotationKClass: KClass<T>): Sequence<KSAnnotation> {
     return this.annotations.filter {

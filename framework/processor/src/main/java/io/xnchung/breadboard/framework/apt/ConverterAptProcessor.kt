@@ -13,6 +13,7 @@ import java.lang.reflect.Type
 import javax.annotation.processing.RoundEnvironment
 import javax.annotation.processing.SupportedAnnotationTypes
 import javax.annotation.processing.SupportedOptions
+import javax.lang.model.element.Element
 import javax.lang.model.element.ElementKind
 import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
@@ -100,10 +101,11 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                     }
 
                     val emptyParams = executableElement.parameters.isEmpty()
-                    if (emptyParams && it.isPublic && it.isStatic &&
+                    val staticCallElement = it.staticCallElement()
+                    if (emptyParams && it.isPublic && staticCallElement != null &&
                         (isJvmFunc2 && argIsValid() || isJvmFunc3 && suspendArgIsValid())
                     ) {
-                        createProviderClass(it, isJvmFunc3, isInstrumentation)
+                        createProviderClass(it, staticCallElement, isJvmFunc3, isInstrumentation)
                     } else {
                         processingEnv.messager.printMessage(
                             Diagnostic.Kind.ERROR,
@@ -123,7 +125,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
         return true
     }
 
-    private fun createProviderClass(element: ExecutableElement, isSuspend: Boolean, isInstrumentation: Boolean) {
+    private fun createProviderClass(element: ExecutableElement, staticCallElement: Element, isSuspend: Boolean, isInstrumentation: Boolean) {
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         val converter = element.getAnnotation(ConverterProvider::class.java)
@@ -137,17 +139,17 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                 }
             } != null
         }?.annotationType?.asElement()?.toFullPath() ?: DefaultQualifier::class.java.canonicalName
-        val methodClass = element.enclosingElement.asType().let { ClassName.get(it) }
-
-        val fileName = "_breadboard" + element.toFullPath().replace(".", "_") + "Generated"
+        val methodClass = ClassName.get(if (staticCallElement.isClass) staticCallElement.asType() else staticCallElement.enclosingElement.asType())
+        val fieldDot = if (staticCallElement.isClass) "" else "${staticCallElement.simpleName}."
+        val fileName = "${ClassNames.GEN_FILE_NAME_PREFIX}${element.toFullPath().replace(".", "_")}Generated"
         val generatedClass: TypeSpec = TypeSpec.classBuilder(fileName)
             .addMethod(
-                MethodSpec.methodBuilder("${ClassNames.GEN_FUNC_NAME_SUFFIX}${fileName}Converter")
+                MethodSpec.methodBuilder("_provide_converter")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .returns(ClassName.get("io.xnchung.breadboard.converters", "ConverterHolder"))
                     .addStatement(
                         """
-                        return new $typeRefLiteral("$qualifier",${converter.order},$typeRefLiteral.${element.simpleName}())
+                        return new $typeRefLiteral("$qualifier",${converter.order},$typeRefLiteral.${fieldDot}${element.simpleName}())
                         """.trimIndent(),
                         ClassName.get("io.xnchung.breadboard.converters", if (isSuspend) "ConverterHolder.Suspend" else "ConverterHolder.Normal"),
                         methodClass
@@ -166,7 +168,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                 } else this
             }
             .build()
-        val javaFile: JavaFile = JavaFile.builder(ClassNames.CONVERTERS_PACKAGE_NAME, generatedClass)
+        val javaFile: JavaFile = JavaFile.builder(processingEnv.elementUtils.getPackageOf(element).qualifiedName.toString(), generatedClass)
             .build()
 
         try {

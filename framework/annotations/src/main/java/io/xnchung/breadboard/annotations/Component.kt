@@ -25,14 +25,38 @@ annotation class Param(
     val defaultValue: String = "",
     val desc: String = "",
     val collectionType: CollectionType = CollectionType.None,
+    val nullable: Boolean = false,
     val qualifier: KClass<out Annotation> = DefaultQualifier::class,
+    val provider: KClass<out ParamProviderContract<*>> = EmptyParamProvider::class
 )
+
+@MustBeDocumented
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class ParamProvider(
+    val provider: KClass<out ParamProviderContract<*>>
+)
+
+@MustBeDocumented
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class Ignore()
+
+
+interface ParamProviderContract<out T> {
+    val values: Iterable<T>
+}
+
+class EmptyParamProvider : ParamProviderContract<Any> {
+    override val values get() = emptyList<Any>()
+}
 
 @MustBeDocumented
 @Retention(AnnotationRetention.SOURCE)
 annotation class TypeToken(
     val rawType: KClass<*>,
-    val typeArgs: Array<TypeToken> = []
+    val typeArgs: Array<TypeToken> = [],
+    val nullable: Boolean = false
 )
 
 

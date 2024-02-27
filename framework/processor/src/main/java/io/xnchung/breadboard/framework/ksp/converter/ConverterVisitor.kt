@@ -24,19 +24,19 @@ class ConverterVisitor(
         if (function.isValidConverterFactory) {
             val ksName = function.qualifiedName ?: return
             val fqn = ksName.asString()
-            val name = fqn.replace(".", "_")
+            val name = ClassNames.GEN_FILE_NAME_PREFIX + fqn.replace(".", "_")
             val file = codeGenerator.createNewFile(
                 dependencies = function.containingFile?.let {
                     Dependencies(aggregating = false, it)
                 } ?: Dependencies(aggregating = false),
-                packageName = ClassNames.CONVERTERS_PACKAGE_NAME,
-                fileName = "_$name"
+                packageName = function.packageName.asString(),
+                fileName = name
             )
             file.use {
-                it.write(convertFqnTemplate(isInstrumentation, function, "_${name}Module").toByteArray())
+                it.write(convertFqnTemplate(isInstrumentation, function, "${name}Module").toByteArray())
             }
         } else {
-            logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static,the return type should be function type,like:(String,Type)->T? ,for java it should be ${ProcessConstants.KOTLIN_JVM_FUNC_2},like Function2<String,Type,Bean>")
+            logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static(object or companion object),the return type should be function type,like:(String,Type)->T? ,for java it should be ${ProcessConstants.KOTLIN_JVM_FUNC_2},like Function2<String,Type,Bean>")
         }
     }
 }
@@ -64,18 +64,29 @@ private fun convertFqnTemplate(
         ConverterHolder.Normal("$qualifier",${converterProvider.order},${function.toFullPath()}()) 
         """.trimIndent()
     }
+    val funcName = if (isInstrumentation) {
+        "${ClassNames.GEN_FUNC_NAME_PREFIX}${name}Converter"
+    } else {
+        "_provide_converter"
+    }
     val func = """
-        fun ${ClassNames.GEN_FUNC_NAME_SUFFIX}${name}ConverterProvider(): ConverterHolder {
+        fun $funcName(): ConverterHolder {
             return $initStatement
         }"""
+    val pkgName = function.packageName.asString()
     return if (isInstrumentation) {
         """
-            package ${ClassNames.CONVERTERS_PACKAGE_NAME}
-            $func
+         package $pkgName
+         
+         import io.xnchung.breadboard.converters.*
+         
+         $func
            """.trimIndent()
     } else {
         """
-        package ${ClassNames.CONVERTERS_PACKAGE_NAME}
+        package $pkgName
+        
+        import io.xnchung.breadboard.converters.*
         
         import dagger.Module
         import dagger.Provides
@@ -85,7 +96,7 @@ private fun convertFqnTemplate(
         
         @Module
         @InstallIn(SingletonComponent::class)
-        class $moduleName {
+        object $moduleName {
         
             @Provides
             @IntoSet

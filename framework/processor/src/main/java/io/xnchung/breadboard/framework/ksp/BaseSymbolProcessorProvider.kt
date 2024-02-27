@@ -16,7 +16,7 @@ abstract class BaseSymbolProcessorProvider : SymbolProcessorProvider {
         return if (enable) {
             realCreate(environment, isInstrumentation, isApp)
         } else {
-            environment.logger.warn("The breadboard processor has been disabled because the variant being assembled is not debuggable")
+            environment.logger.info("The breadboard processor has been disabled because the variant being assembled is not debuggable")
             NoOpSymbolProcessor()
         }
     }

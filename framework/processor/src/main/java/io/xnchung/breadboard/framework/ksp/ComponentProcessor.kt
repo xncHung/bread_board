@@ -32,7 +32,6 @@ class ComponentProcessor(
         }
         val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(Component::class.java.name)
             .filter {
-                logger.warn("handle ksAnnotated = ${it::class} isclass=${it is KSClassDeclaration},isFunction=${it is KSFunctionDeclaration},the content=$it")
                 val isValid = it.validate()
                 if (!isValid) {
                     logger.warn("this component is not valid ${it.containingFile?.filePath}")

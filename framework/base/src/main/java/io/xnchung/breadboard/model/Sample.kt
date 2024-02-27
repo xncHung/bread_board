@@ -24,5 +24,5 @@ data class Sample(
     override val target: Target,
     override val routes: List<String>,
     override val source: String,
-    override val paramHolders: List<ParamHolder<*>>
+    override val paramHolders: List<ParamHolderContract<*>>
 ) : SampleContract

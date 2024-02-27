@@ -25,11 +25,11 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
     routes = ["the routeUri"],
     tags = ["main biz", "home"],
     params = [
-        Param(key = "testS  tring", rawType = String::class, defaultValue = "testStringDefaultValue"),
+        Param(key = "testString", rawType = String::class, defaultValue = "testStringDefaultValue"),
         Param(key = "testInt", rawType = Int::class, defaultValue = "1"),
         Param(key = "testFloat", rawType = Float::class, defaultValue = "1.0"),
         Param(key = "testDouble", rawType = Double::class, defaultValue = "3.4"),
-        Param(key = "test   B  oolean", rawType = Boolean::class, defaultValue = "true"),
+        Param(key = "testBoolean", rawType = Boolean::class, defaultValue = "true"),
         Param(key = "testHexInt", rawType = Int::class, defaultValue = "1a4fdd", qualifier = HexInt::class),
         Param(key = "testColor", rawType = Int::class, defaultValue = "#ff0000", qualifier = ColorParam::class),
         Param(
@@ -94,7 +94,7 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
         """
         ),
         Param(
-            key = "testHexI ntArrayList", rawType = Int::class, collectionType = CollectionType.ArrayList, defaultValue = """
+            key = "testHexIntArrayList", rawType = Int::class, collectionType = CollectionType.ArrayList, defaultValue = """
            ["1a4fdd","4df3ee"] 
         """, qualifier = HexInt::class
         ),
@@ -106,7 +106,11 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
         Param(
             key = "testHashMap",
             rawType = HashMap::class,
-            typeArgs = [TypeToken(rawType = String::class), TypeToken(rawType = ArrayList::class, typeArgs = [TypeToken(rawType = Int::class)])]
+            typeArgs = [TypeToken(rawType = String::class, nullable = true), TypeToken(
+                rawType = ArrayList::class,
+                typeArgs = [TypeToken(rawType = Int::class)]
+            )],
+            nullable = true
         )
     ]
 )
@@ -129,13 +133,32 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
+@Component("test compose")
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
+@Preview(showBackground = true)
+fun Greeting(name: String = "hahah", modifier: Modifier = Modifier) {
     Text(
         text = "Hello $name!",
         modifier = modifier
     )
+}
+
+class Test {
+    @Component("test")
+    fun test(x: Any = "defaultArg"): Unit {
+
+
+    }
+
+    @Component("test")
+    fun test(x: Any? = "defaultArg", y: String): Unit {
+
+
+    }
+
+    @Component("test")
+    fun test(): Unit {
+    }
 }
 
 @Preview(showBackground = true)
