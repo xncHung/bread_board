@@ -16,10 +16,7 @@ import io.xnchung.breadboard.launcher.ui.theme.BreadBoardTheme
 import io.xnchung.breadboard.model.SampleContract
 
 abstract class BaseBreadBoardLauncherActivity : ComponentActivity() {
-    companion object {
-        private const val TAG = "BreadBoardLauncher"
-    }
-
+    private val TAG = this::class.java.simpleName
     protected abstract val allSamples: List<SampleContract>
     protected abstract val allExtConverters: Map<String, List<ConverterHolder>>
     override fun onCreate(savedInstanceState: Bundle?) {
