@@ -94,7 +94,7 @@ internal class ComponentVisitor(
             val name = it.name?.asString().orEmpty()
             val resolve = it.type.resolve()
             val nullable = resolve.nullability == Nullability.NULLABLE
-            """                     $name = this["${it.parameterKey()}"] ${if (nullable) "as?" else "as"} ${resolve.declaration.toFullPath()}"""
+            """                     $name = this["${it.parameterKey()}"] ${if (nullable) "as?" else "as"} ${resolve.fqnForDeclaration()}"""
         }
         val isComposable = function.annotations.any { it.annotationType.resolve().declaration.toFullPath() == ClassNames.COMPOSABLE }
 
@@ -156,12 +156,14 @@ internal class ComponentVisitor(
     @OptIn(KspExperimental::class)
     private fun createModule(ksDeclaration: KSDeclaration, target: String) {
         val packageName = ksDeclaration.packageName.asString()
-        val declarationFullPath = ksDeclaration.toFullPath()
-        val componentFile = "_${declarationFullPath.replace(".", "_")}" + when (ksDeclaration) {
+        val declarationFullPath = ksDeclaration.toFullPath() + when (ksDeclaration) {
             is KSFunctionDeclaration -> {
-//                虽然可以通过 resolver寻找重载,但代价比较高
 //                取参数的sampleName 也有冲突的可能，但概率很低，如果有此情况，应该由开发者修改代码
-                ksDeclaration.parameters.joinToString("_", "_") { it.type.resolve().declaration.simpleName.asString() }
+                ksDeclaration.parameters.joinToString("_", "_") {
+                    val ksType = it.type.resolve()
+                    simpleNameForDeclaration(ksType)
+
+                }
             }
 
             else -> ""
@@ -178,6 +180,7 @@ internal class ComponentVisitor(
         val dependencies = ksDeclaration.containingFile?.let {
             Dependencies(aggregating = false, it)
         } ?: Dependencies(aggregating = false)
+        val componentFile = declarationFullPath.replace(".", "_")
         val file = codeGenerator.createNewFile(
             dependencies = dependencies, packageName = packageName, fileName = "${ClassNames.GEN_FILE_NAME_PREFIX}${componentFile}Component"
         )
@@ -185,7 +188,7 @@ internal class ComponentVisitor(
             stream.write(
                 componentTemplate(
                     isInstrumentation,
-                    id = componentFile,
+                    id = declarationFullPath,
                     componentFile = componentFile,
                     componentPackage = packageName,
                     componentName = component.name,
@@ -202,12 +205,35 @@ internal class ComponentVisitor(
         }
     }
 
+    private fun simpleNameForDeclaration(ksType: KSType): String {
+        val declaration = ksType.declaration
+        val simpleName = declaration.simpleName.asString()
+        return if (declaration.toFullPath() == Array::class.qualifiedName) {
+            val parameter = ksType.arguments.first().type?.resolve()
+            "${parameter?.let { simpleNameForDeclaration(it) }}$simpleName"
+        } else {
+            simpleName
+        }
+    }
+
+    private fun KSType.fqnForDeclaration(): String {
+        val declaration = declaration
+        val fullPath = declaration.toFullPath().replace("^kotlin\\.".toRegex(), "")
+        return if (arguments.isNotEmpty()) {
+            fullPath + arguments.joinToString(prefix = "<", postfix = ">") {
+                it.type?.resolve()?.fqnForDeclaration() ?: "*"
+            }
+        } else {
+            fullPath
+        }
+    }
+
     private fun getParamsFromFuncParameters(funcDeclaration: KSFunctionDeclaration) = funcDeclaration.parameters
         .filterIgnore()
         .map {
             // TODO: get desc from comment
             val parameterKey = it.parameterKey()
-            val fqn = it.type.resolve().declaration.toFullPath()
+            val fqn = it.type.resolve().fqnForDeclaration()
             val declaration = it.getKSAnnotationsByType(ParamProvider::class).firstOrNull()?.getArg<KSType>("provider")?.declaration
             val providerFqn =
                 (declaration as? KSClassDeclaration)?.run {

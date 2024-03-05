@@ -157,7 +157,21 @@ class Test {
     }
 
     @Component("test")
-    fun test(): Unit {
+    fun test(x: Array<String>): Unit {
+    }
+
+    @Component("test")
+    fun test(x: Array<Int>): Unit {
+
+    }
+
+    @Component("test")
+    fun test(x: Array<Array<String>>): Unit {
+    }
+
+    @Component("test")
+    fun test(x: Array<Array<Int>>): Unit {
+
     }
 }
 

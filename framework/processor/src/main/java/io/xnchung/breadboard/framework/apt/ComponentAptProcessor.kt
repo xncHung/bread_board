@@ -30,6 +30,7 @@ import javax.lang.model.element.ExecutableElement
 import javax.lang.model.element.Modifier
 import javax.lang.model.element.TypeElement
 import javax.lang.model.element.VariableElement
+import javax.lang.model.type.ArrayType
 import javax.lang.model.type.DeclaredType
 import javax.lang.model.type.PrimitiveType
 import javax.lang.model.type.TypeKind
@@ -225,11 +226,11 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
             getParamsFromAnnotation(element, component)
         }
         val fullPath = element.toFullPath() + (element as? ExecutableElement)?.run {
-            val existOverload = enclosingElement.enclosedElements.any { it !== this && it.kind == kind && it.simpleName == simpleName }
-            enclosingElement.toFullPath() + "." + simpleName.toString() + if (existOverload) {
 //                取参数的sampleName 也有冲突的可能，但概率很低，如果有此情况，应该由开发者修改代码
-                parameters.joinToString("_", "_") { "${(it.asType() as DeclaredType).asElement().simpleName}" }
-            } else ""
+            parameters.joinToString("_", "_") {
+                val asType = it.asType()
+                simpleTypeString(asType)
+            }
         }.orEmpty()
         val returnStatement = """
             return new ${typeRefLiteral}(
@@ -309,6 +310,30 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                 "breadboard >>>Could not write generated file: " + e.message
             )
         }
+    }
+
+    private fun simpleTypeString(asType: TypeMirror): String = when (asType.kind) {
+        TypeKind.BOOLEAN -> "Boolean"
+        TypeKind.BYTE -> "Byte"
+        TypeKind.SHORT -> "Short"
+        TypeKind.INT -> "Int"
+        TypeKind.LONG -> "Long"
+        TypeKind.CHAR -> "Char"
+        TypeKind.FLOAT -> "Float"
+        TypeKind.DOUBLE -> "Double"
+        TypeKind.ARRAY -> {
+            val array: ArrayType = asType as ArrayType
+            "${simpleTypeString(array.componentType)}Array"
+        }
+
+        TypeKind.DECLARED -> {
+            val declaredType = asType as DeclaredType
+            declaredType.asElement().simpleName.toString().let {
+                if (it == "Integer") "Int" else it
+            }
+        }
+
+        else -> ""
     }
 
     private fun getParamsFromMethodParameters(element: ExecutableElement) = element.parameters

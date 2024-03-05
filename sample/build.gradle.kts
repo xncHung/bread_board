@@ -78,8 +78,8 @@ dependencies {
     implementation(libs.constraintlayout)
 
     implementation(libs.hilt.android)
-    kapt(libs.breadboard.processor)
-    kapt(libs.hilt.compiler)
+    ksp(libs.breadboard.processor)
+    ksp(libs.hilt.compiler)
 
     debugImplementation(libs.breadboard.launcher)
     debugImplementation(libs.breadboard.base)
