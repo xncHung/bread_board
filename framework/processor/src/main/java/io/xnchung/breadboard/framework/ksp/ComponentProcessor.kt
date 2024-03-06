@@ -88,7 +88,6 @@ internal fun generateEmptyDi(resolver: Resolver, codeGenerator: CodeGenerator, f
     }
 }
 
-@OptIn(KspExperimental::class)
 internal fun generateDiActivity(resolver: Resolver, codeGenerator: CodeGenerator) {
     val ksName = resolver.getKSNameFromString(ClassNames.DI_ACTIVITY_FQN)
     if (resolver.getClassDeclarationByName(ksName) != null) {
@@ -107,11 +106,30 @@ internal fun generateDiActivity(resolver: Resolver, codeGenerator: CodeGenerator
         val clzDeclaration =
             """
                 package $packageName
-                
+
+                import androidx.activity.viewModels
+                import androidx.lifecycle.SavedStateHandle
                 import dagger.hilt.android.AndroidEntryPoint
-                
+                import dagger.hilt.android.lifecycle.HiltViewModel
+                import io.xnchung.breadboard.converters.ConverterHolder
+                import io.xnchung.breadboard.launcher.ui.LauncherViewModel
+                import io.xnchung.breadboard.model.SampleContract
+                import javax.inject.Inject
+
                 @AndroidEntryPoint
-                class $className: BreadBoardLauncherActivityWithDIDeclaration()
+                class $className : BaseBreadBoardLauncherActivity() {
+
+                    @HiltViewModel
+                    class MyLauncherViewModel @Inject constructor(
+                        stateHandle: SavedStateHandle,
+                        injectSamples: Set<@JvmSuppressWildcards SampleContract>,
+                        injectConverters: Set<@JvmSuppressWildcards ConverterHolder>,
+                    ) : LauncherViewModel(injectConverters,stateHandle,injectSamples.toList())
+
+                    override val viewModel: LauncherViewModel by viewModels<MyLauncherViewModel>()
+                }
+
+                
                 """.trimIndent()
         stream.write(clzDeclaration.toByteArray())
     }

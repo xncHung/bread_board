@@ -220,6 +220,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
 
     private fun createProviderClass(element: Element, componentTarget: String, isInstrumentation: Boolean, vararg args: Any?) {
         val component = element.getAnnotation(Component::class.java)
+        val pkgName = processingEnv.elementUtils.getPackageOf(element).toString()
         val paramHolders = if (element is ExecutableElement) {
             getParamsFromMethodParameters(element)
         } else {
@@ -246,12 +247,12 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
              params
             )
         """.trimIndent()
-        val fileName = ("${ClassNames.GEN_FILE_NAME_PREFIX}${fullPath.replace(".", "_")}Generated")
+        val fileName = ("${ClassNames.GEN_FILE_NAME_PREFIX}${fullPath.substringAfter(pkgName).replace(".", "_")}Generated")
         val targetClassName = ClassName.get("io.xnchung.breadboard.model", "Target")
         val generatedClass: TypeSpec = TypeSpec.classBuilder(fileName)
             .addModifiers(Modifier.PUBLIC)
             .addMethod(
-                MethodSpec.methodBuilder("_provide_component")
+                MethodSpec.methodBuilder("${ClassNames.GEN_FUNC_NAME_PREFIX}component")
                     .addModifiers(Modifier.PUBLIC)
                     .addModifiers(Modifier.STATIC)
                     .returns(ClassName.bestGuess(ClassNames.SAMPLE_CONTRACT_FQN))
@@ -299,7 +300,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
             }
             .build()
 
-        val javaFile: JavaFile = JavaFile.builder(processingEnv.elementUtils.getPackageOf(element).toString(), generatedClass)
+        val javaFile: JavaFile = JavaFile.builder(pkgName, generatedClass)
             .build()
 
         try {
@@ -448,11 +449,61 @@ internal fun generateDiActivityFoJava(processingEnv: ProcessingEnvironment) {
     }
     val packageName = diActivityFqn.substringBeforeLast(".")
     val className = diActivityFqn.substringAfterLast(".")
-    val superClass = ClassName.get(packageName, "BreadBoardLauncherActivityWithDIDeclaration")
+    val superClass = ClassName.get(packageName, "BaseBreadBoardLauncherActivity")
     val entryPointAnnotation = ClassName.get("dagger.hilt.android", "AndroidEntryPoint")
+    val hiltViewModel = ClassName.get("dagger.hilt.android.lifecycle", "HiltViewModel")
+    val savedStateHandle = ClassName.get("androidx.lifecycle", "SavedStateHandle")
+    val javaXInject = ClassName.get("javax.inject", "Inject")
+    val launcherViewModel = ClassName.get("io.xnchung.breadboard.launcher.ui", "LauncherViewModel")
+    val stateHandleFiledName = "stateHandle"
+    val myLauncherViewModel = ClassName.get("", "MyLauncherViewModel")
+    val viewModelProvider = ClassName.get("androidx.lifecycle", "ViewModelProvider")
+    val setTypeName = ClassName.get(Set::class.java)
+    val arrayList = ClassName.get(ArrayList::class.java)
+    val sampleClassName = ClassName.bestGuess(ClassNames.SAMPLE_CONTRACT_FQN)
     val typeSpec = TypeSpec.classBuilder(className)
         .addModifiers(Modifier.PUBLIC)
         .superclass(superClass)
+        .addType(
+            TypeSpec.classBuilder("MyLauncherViewModel")
+                .superclass(launcherViewModel)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                .addAnnotation(hiltViewModel)
+                .addMethod(
+                    MethodSpec.constructorBuilder()
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(savedStateHandle, stateHandleFiledName)
+                        .addParameter(ParameterizedTypeName.get(setTypeName, sampleClassName), "injectedSamples")
+                        .addParameter(
+                            ParameterizedTypeName.get(setTypeName, ClassName.bestGuess(ClassNames.CONVERTER_HOLDER_FQN)),
+                            "injectedConverters"
+                        )
+                        .addStatement("super(injectedConverters,stateHandle,new $typeRefLiteral<>(injectedSamples))", arrayList)
+                        .addAnnotation(javaXInject)
+                        .build()
+                )
+                .build()
+        )
+        .addField(myLauncherViewModel, "viewModel", Modifier.PRIVATE)
+        .addMethod(
+            MethodSpec.methodBuilder("getViewModel")
+                .addModifiers(Modifier.PROTECTED)
+                .addAnnotation(Override::class.java)
+                .returns(launcherViewModel)
+                .beginControlFlow(" if (viewModel == null)")
+                .addStatement("viewModel = initViewModel()")
+                .endControlFlow()
+                .addStatement("return viewModel")
+                .build()
+        )
+        .addMethod(
+            MethodSpec.methodBuilder("initViewModel")
+                .addModifiers(Modifier.PRIVATE)
+                .returns(myLauncherViewModel)
+                .addStatement("return new $typeRefLiteral(this).get($typeRefLiteral.class)", viewModelProvider, myLauncherViewModel)
+                .build()
+        )
+
         .addAnnotation(entryPointAnnotation)
         .build()
     val javaFile = JavaFile.builder(packageName, typeSpec).build()

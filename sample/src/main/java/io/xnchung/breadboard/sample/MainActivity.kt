@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import dagger.hilt.android.AndroidEntryPoint
 import io.xnchung.breadboard.annotations.CollectionType
 import io.xnchung.breadboard.annotations.Component
 import io.xnchung.breadboard.annotations.Param
@@ -114,7 +115,7 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
         )
     ]
 )
-//@AndroidEntryPoint
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     companion object {
         private const val TAG = "MainActivity"
@@ -162,6 +163,11 @@ class Test {
 
     @Component("test")
     fun test(x: Array<Int>): Unit {
+
+    }
+
+    @Component("test")
+    fun test(x: List<Int>): Unit {
 
     }
 

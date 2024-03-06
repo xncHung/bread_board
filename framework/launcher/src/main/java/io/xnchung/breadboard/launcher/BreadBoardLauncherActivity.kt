@@ -5,10 +5,9 @@ import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
-import io.xnchung.breadboard.converters.ConverterCore
-import io.xnchung.breadboard.converters.ConverterHolder
-import io.xnchung.breadboard.model.SampleContract
-import javax.inject.Inject
+import androidx.activity.viewModels
+import io.xnchung.breadboard.launcher.ui.LauncherViewModel
+import io.xnchung.breadboard.launcher.ui.LauncherViewModelForInstrumentation
 
 class BreadBoardLauncherActivity : ComponentActivity() {
     companion object {
@@ -32,7 +31,6 @@ class BreadBoardLauncherActivity : ComponentActivity() {
             if (isHiltApp) {
                 try {
 //                    Even if it is a Hilt app, it is possible that the developer will forcibly specify instrumentation mode
-//                    see []
                     Class.forName("io.xnchung.breadboard.launcher.BreadBoardLauncherActivityForDI")
                 } catch (e: Exception) {
                     BreadBoardLauncherWithInstrumentationActivity::class.java
@@ -43,31 +41,12 @@ class BreadBoardLauncherActivity : ComponentActivity() {
         Intent(intent).also {
             it.setClass(this, targetClz)
             startActivity(it)
+            finish()
         }
     }
 }
 
 class BreadBoardLauncherWithInstrumentationActivity : BaseBreadBoardLauncherActivity() {
-    override val allSamples by lazy {
-        AllSamplesHolder.allSamples
-    }
-    override val allExtConverters by lazy {
-        ConverterCore.allExtConverterFactories
-    }
+    override val viewModel: LauncherViewModel by viewModels<LauncherViewModelForInstrumentation>()
 }
 
-abstract class BreadBoardLauncherActivityWithDIDeclaration : BaseBreadBoardLauncherActivity() {
-
-    @Inject
-    lateinit var injectedSamples: Set<@JvmSuppressWildcards SampleContract>
-
-    @Inject
-    lateinit var injectedConverters: Set<@JvmSuppressWildcards ConverterHolder>
-    override val allSamples: List<SampleContract> by lazy {
-        injectedSamples.toList()
-    }
-    override val allExtConverters by lazy {
-        ConverterCore.fillDiConverters(injectedConverters)
-        ConverterCore.allExtConverterFactories
-    }
-}

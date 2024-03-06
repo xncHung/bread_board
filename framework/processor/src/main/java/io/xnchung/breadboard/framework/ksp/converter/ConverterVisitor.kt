@@ -22,18 +22,18 @@ class ConverterVisitor(
 ) : KSVisitorVoid() {
     override fun visitFunctionDeclaration(function: KSFunctionDeclaration, data: Unit) {
         if (function.isValidConverterFactory) {
-            val ksName = function.qualifiedName ?: return
-            val fqn = ksName.asString()
-            val name = ClassNames.GEN_FILE_NAME_PREFIX + fqn.replace(".", "_")
+            val packageName = function.packageName.asString()
+            val simpleName = function.toFullPath().substringAfter(packageName)
+            val name = ClassNames.GEN_FILE_NAME_PREFIX + simpleName.replace(".", "_") + "Module"
             val file = codeGenerator.createNewFile(
                 dependencies = function.containingFile?.let {
                     Dependencies(aggregating = false, it)
                 } ?: Dependencies(aggregating = false),
-                packageName = function.packageName.asString(),
+                packageName = packageName,
                 fileName = name
             )
             file.use {
-                it.write(convertFqnTemplate(isInstrumentation, function, "${name}Module").toByteArray())
+                it.write(convertFqnTemplate(isInstrumentation, function, name).toByteArray())
             }
         } else {
             logger.error("converterFactory func:'${function.qualifiedName?.asString()}' is not valid,the function should has not any parameter,should be public and static(object or companion object),the return type should be function type,like:(String,Type)->T? ,for java it should be ${ProcessConstants.KOTLIN_JVM_FUNC_2},like Function2<String,Type,Bean>")
@@ -52,36 +52,37 @@ private fun convertFqnTemplate(
             ?: DefaultQualifier::class.qualifiedName!!
     val converterProvider = function.getAnnotationsByType(ConverterProvider::class).first()
     val suspend = function.returnType?.resolve()?.declaration?.toFullPath() == "kotlin.coroutines.SuspendFunction2"
-    val ksName = function.qualifiedName ?: return ""
-    val fqn = ksName.asString()
-    val name = fqn.replace(".", "_")
     val initStatement = if (suspend) {
         """
-           ConverterHolder.Suspend("$qualifier",${converterProvider.order},${function.toFullPath()}()) 
-        """.trimIndent()
+                return ConverterHolder.Suspend(
+                    qualifier = "$qualifier",
+                    order = ${converterProvider.order},
+                    func = ${function.toFullPath()}()) 
+        """
     } else {
         """
-        ConverterHolder.Normal("$qualifier",${converterProvider.order},${function.toFullPath()}()) 
-        """.trimIndent()
+                return ConverterHolder.Normal(
+                         qualifier ="$qualifier",
+                         order = ${converterProvider.order},
+                         func = ${function.toFullPath()}()) 
+        """
     }
-    val funcName = if (isInstrumentation) {
-        "${ClassNames.GEN_FUNC_NAME_PREFIX}${name}Converter"
-    } else {
-        "_provide_converter"
-    }
-    val func = """
-        fun $funcName(): ConverterHolder {
-            return $initStatement
-        }"""
+    val func =
+        """fun ${ClassNames.GEN_FUNC_NAME_PREFIX}converter(): ConverterHolder {
+                $initStatement
+            }
+        """
     val pkgName = function.packageName.asString()
     return if (isInstrumentation) {
         """
-         package $pkgName
+        package $pkgName
          
-         import io.xnchung.breadboard.converters.*
-         
-         $func
-           """.trimIndent()
+        import io.xnchung.breadboard.converters.*
+        object $moduleName {
+            @JvmStatic
+            $func
+        }
+        """.trimIndent()
     } else {
         """
         package $pkgName

@@ -11,18 +11,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import io.xnchung.breadboard.converters.ConverterHolder
+import io.xnchung.breadboard.converters.ConverterCore
+import io.xnchung.breadboard.launcher.ui.LauncherViewModelContract
 import io.xnchung.breadboard.launcher.ui.theme.BreadBoardTheme
-import io.xnchung.breadboard.model.SampleContract
 
 abstract class BaseBreadBoardLauncherActivity : ComponentActivity() {
+    companion object {
+    }
+
     private val TAG = this::class.java.simpleName
-    protected abstract val allSamples: List<SampleContract>
-    protected abstract val allExtConverters: Map<String, List<ConverterHolder>>
+    protected abstract val viewModel: LauncherViewModelContract
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d(TAG, "onCreate: samplers=$allSamples")
-        Log.d(TAG, "onCreate: converters=${allExtConverters}")
+        Log.v(TAG, "onCreate: samplers=${viewModel.allSamples}")
+        Log.v(TAG, "onCreate: converters=${ConverterCore.allExtConverterFactories}")
+        Log.d(TAG, "onCreate: targetId=${viewModel.targetId}")
         setContent {
             BreadBoardTheme {
                 // A surface container using the 'background' color from the theme

@@ -79,7 +79,7 @@ internal class ComponentVisitor(
 
     override fun visitFunctionDeclaration(function: KSFunctionDeclaration, data: Unit) {
         super.visitFunctionDeclaration(function, data)
-        val fullPath = when {
+        val fullCallPath = when {
             function.isStaticOrTopLevelOrObject -> function.toFullPath()
             (function.parentDeclaration as? KSClassDeclaration)?.getConstructors()
                 ?.singleOrNull { !it.isPrivate() && it.parameters.isEmpty() } != null -> {
@@ -94,13 +94,16 @@ internal class ComponentVisitor(
             val name = it.name?.asString().orEmpty()
             val resolve = it.type.resolve()
             val nullable = resolve.nullability == Nullability.NULLABLE
-            """                     $name = this["${it.parameterKey()}"] ${if (nullable) "as?" else "as"} ${resolve.fqnForDeclaration()}"""
+            val castStatement = if (resolve.declaration.qualifiedName?.asString() == "kotlin.Any" && nullable) "" else {
+                "${if (nullable) "as?" else "as"} ${resolve.fqnForDeclaration()}"
+            }
+            """                     $name = this["${it.parameterKey()}"] $castStatement"""
         }
         val isComposable = function.annotations.any { it.annotationType.resolve().declaration.toFullPath() == ClassNames.COMPOSABLE }
 
         val target = if (isComposable) {
             """targetComposable {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
         } else {
@@ -109,31 +112,31 @@ internal class ComponentVisitor(
                 ksClassDeclaration.generateTargetCodeByClassDeclaration(
                     handleActivity = {
                         """targetCommonFunc {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
                     },
                     handleFragment = {
                         """targetFragmentBuilder {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
                     },
                     handleDialog = {
                         """targetDialogBuilder {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
                     },
                     handleView = {
                         """targetViewBuilder {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
                     },
                     defaultAction = {
                         """targetCommonFunc {
-                    $fullPath($paramString
+                    $fullCallPath($paramString
                     )
                 }"""
                     }
@@ -156,7 +159,8 @@ internal class ComponentVisitor(
     @OptIn(KspExperimental::class)
     private fun createModule(ksDeclaration: KSDeclaration, target: String) {
         val packageName = ksDeclaration.packageName.asString()
-        val declarationFullPath = ksDeclaration.toFullPath() + when (ksDeclaration) {
+        val suffix = when (ksDeclaration) {
+//            对于函数，由于函数重载，需要将参数列表也作为文件名的一部分，不然处理重载函数会文件重复
             is KSFunctionDeclaration -> {
 //                取参数的sampleName 也有冲突的可能，但概率很低，如果有此情况，应该由开发者修改代码
                 ksDeclaration.parameters.joinToString("_", "_") {
@@ -168,6 +172,8 @@ internal class ComponentVisitor(
 
             else -> ""
         }
+        val declarationFullPath = ksDeclaration.toFullPath() + suffix
+        val simpleFullPath = declarationFullPath.substringAfter(packageName)
         val component = ksDeclaration.getAnnotationsByType(Component::class).first()
         val paramHolders = if (ksDeclaration is KSFunctionDeclaration) {
             getParamsFromFuncParameters(ksDeclaration)
@@ -180,9 +186,11 @@ internal class ComponentVisitor(
         val dependencies = ksDeclaration.containingFile?.let {
             Dependencies(aggregating = false, it)
         } ?: Dependencies(aggregating = false)
-        val componentFile = declarationFullPath.replace(".", "_")
+        val componentFile = simpleFullPath.replace(".", "_").let {
+            "${ClassNames.GEN_FILE_NAME_PREFIX}${it}Component"
+        }
         val file = codeGenerator.createNewFile(
-            dependencies = dependencies, packageName = packageName, fileName = "${ClassNames.GEN_FILE_NAME_PREFIX}${componentFile}Component"
+            dependencies = dependencies, packageName = packageName, fileName = componentFile
         )
         file.use { stream ->
             stream.write(
@@ -205,6 +213,9 @@ internal class ComponentVisitor(
         }
     }
 
+    /**
+     * Array 没有泛型擦除，如果只使用 Array，则重载可能会冲突
+     */
     private fun simpleNameForDeclaration(ksType: KSType): String {
         val declaration = ksType.declaration
         val simpleName = declaration.simpleName.asString()
@@ -218,7 +229,7 @@ internal class ComponentVisitor(
 
     private fun KSType.fqnForDeclaration(): String {
         val declaration = declaration
-        val fullPath = declaration.toFullPath().replace("^kotlin\\.".toRegex(), "")
+        val fullPath = if (declaration.packageName.asString() == "kotlin") declaration.simpleName.asString() else declaration.toFullPath()
         return if (arguments.isNotEmpty()) {
             fullPath + arguments.joinToString(prefix = "<", postfix = ">") {
                 it.type?.resolve()?.fqnForDeclaration() ?: "*"
@@ -328,39 +339,37 @@ private fun componentTemplate(
     componentRoute: Array<String>,
     paramHolders: Array<String>,
 ): String {
-    val funcName = if (isInstrumentation) {
-        "${ClassNames.GEN_FUNC_NAME_PREFIX}${componentFile}Component"
-    } else {
-        "_provide_component"
-    }
     val func =
-        """fun $funcName(): SampleContract {
-            return Sample(
-              id="$id",
-              name = ${componentName.quote()},
-              description = ${componentDescription.quote()},
-              tags =  listOf(${componentTags.joinToString(",") { "\"$it\"" }}),
-              documentation = ${componentDocs.quote()},
-              owners = listOf(${componentOwners.joinToString(",") { "\"$it\"" }}),
-              target = $componentTarget,
-              routes=  listOf(${componentRoute.joinToString(",") { "\"$it\"" }}),
-              source =  "$componentSource",
-              paramHolders = listOf(${
+        """@Suppress("UNCHECKED_CAST")
+            fun ${ClassNames.GEN_FUNC_NAME_PREFIX}component(): SampleContract {
+                return Sample(
+                  id="$id",
+                  name = ${componentName.quote()},
+                  description = ${componentDescription.quote()},
+                  tags =  listOf(${componentTags.joinToString(",") { "\"$it\"" }}),
+                  documentation = ${componentDocs.quote()},
+                  owners = listOf(${componentOwners.joinToString(",") { "\"$it\"" }}),
+                  target = $componentTarget,
+                  routes=  listOf(${componentRoute.joinToString(",") { "\"$it\"" }}),
+                  source =  "$componentSource",
+                  paramHolders = listOf(${
             paramHolders.joinToString("") {
                 """
-                  $it,"""
+                      $it,"""
             }
         }),
-            )
-        }
+                )
+            }
         """
     return if (isInstrumentation) {
         """
         package $componentPackage
         
         import io.xnchung.breadboard.model.*
-        
-        $func
+        object $componentFile {
+            @JvmStatic
+            $func
+        }
         """.trimIndent()
     } else {
         """

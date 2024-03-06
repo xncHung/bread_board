@@ -129,6 +129,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
         val typeUtils = processingEnv.typeUtils
         val elementUtils = processingEnv.elementUtils
         val converter = element.getAnnotation(ConverterProvider::class.java)
+        val pkgName = processingEnv.elementUtils.getPackageOf(element).qualifiedName.toString()
         val qualifier = element.annotationMirrors.firstOrNull {
             it.annotationType.asElement().annotationMirrors.firstOrNull {
                 it.annotationType.let {
@@ -141,10 +142,10 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
         }?.annotationType?.asElement()?.toFullPath() ?: DefaultQualifier::class.java.canonicalName
         val methodClass = ClassName.get(if (staticCallElement.isClass) staticCallElement.asType() else staticCallElement.enclosingElement.asType())
         val fieldDot = if (staticCallElement.isClass) "" else "${staticCallElement.simpleName}."
-        val fileName = "${ClassNames.GEN_FILE_NAME_PREFIX}${element.toFullPath().replace(".", "_")}Generated"
+        val fileName = "${ClassNames.GEN_FILE_NAME_PREFIX}${element.toFullPath().substringAfter(pkgName).replace(".", "_")}Generated"
         val generatedClass: TypeSpec = TypeSpec.classBuilder(fileName)
             .addMethod(
-                MethodSpec.methodBuilder("_provide_converter")
+                MethodSpec.methodBuilder("${ClassNames.GEN_FUNC_NAME_PREFIX}converter")
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                     .returns(ClassName.get("io.xnchung.breadboard.converters", "ConverterHolder"))
                     .addStatement(
@@ -168,7 +169,7 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
                 } else this
             }
             .build()
-        val javaFile: JavaFile = JavaFile.builder(processingEnv.elementUtils.getPackageOf(element).qualifiedName.toString(), generatedClass)
+        val javaFile: JavaFile = JavaFile.builder(pkgName, generatedClass)
             .build()
 
         try {

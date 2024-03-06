@@ -13,5 +13,5 @@ object ClassNames {
     const val CONVERTER_HOLDER_FQN = "io.xnchung.breadboard.converters.ConverterHolder"
     const val DI_ACTIVITY_FQN = "io.xnchung.breadboard.launcher.BreadBoardLauncherActivityForDI"
     const val GEN_FUNC_NAME_PREFIX = "_breadboard_provide_"
-    const val GEN_FILE_NAME_PREFIX = "_Breadboard_"
+    const val GEN_FILE_NAME_PREFIX = "_Breadboard"
 }
