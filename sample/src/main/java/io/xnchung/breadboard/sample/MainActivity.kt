@@ -23,7 +23,7 @@ import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
     description = "the MainActivity of sample app",
     documentation = """the prd or design url"""",
     owners = ["david", "zhangsan"],
-    routes = ["the routeUri"],
+    route = "the routeUri",
     tags = ["main biz", "home"],
     params = [
         Param(key = "testString", rawType = String::class, defaultValue = "testStringDefaultValue"),

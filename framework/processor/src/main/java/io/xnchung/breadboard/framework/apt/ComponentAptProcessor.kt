@@ -41,7 +41,17 @@ import javax.tools.Diagnostic
 
 
 @SupportedAnnotationTypes("io.xnchung.breadboard.annotations.Component")
-@SupportedOptions(value = [ProcessConstants.ARG_CODE_GEN_ENABLE, ProcessConstants.ARG_CODE_GEN_STRATEGY, ProcessConstants.ARG_CODE_GEN_IS_APP])
+@SupportedOptions(
+    value = [
+        ProcessConstants.ARG_CODE_GEN_ENABLE,
+        ProcessConstants.ARG_CODE_GEN_STRATEGY,
+        ProcessConstants.ARG_CODE_GEN_IS_APP,
+        ProcessConstants.ARG_CODE_GEN_PROJECT_ROOT_PATH,
+        ProcessConstants.ARG_CODE_GEN_PROJECT_PATH,
+        ProcessConstants.ARG_CODE_GEN_PROJECT_NAME,
+
+    ]
+)
 class ComponentAptProcessor : BaseComponentAptProcessor() {
     override fun realProcess(
         annotations: MutableSet<out TypeElement>,
@@ -61,7 +71,6 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
         }
         val targetKt = ClassName.get("io.xnchung.breadboard.model", "TargetKt")
         components.forEach {
-            processingEnv.messager.printMessage(Diagnostic.Kind.WARNING, "element=${it.javaClass} ${it.simpleName}")
             val targetStatementArgs = when (it.kind) {
                 ElementKind.CLASS -> {
                     val asType = it.asType()
@@ -233,6 +242,7 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                 simpleTypeString(asType)
             }
         }.orEmpty()
+        val projectName = processingEnv.options.getOrDefault(ProcessConstants.ARG_CODE_GEN_PROJECT_NAME, "")
         val returnStatement = """
             return new ${typeRefLiteral}(
             "$fullPath",
@@ -242,9 +252,10 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
              "${component.documentation.quoteJava()}",
              owners,
              target,
-              routes,
+              "${component.route.ifBlank { fullPath }}",
               "${component.sourcePath}",
-             params
+             params,
+             "$projectName"
             )
         """.trimIndent()
         val fileName = ("${ClassNames.GEN_FILE_NAME_PREFIX}${fullPath.substringAfter(pkgName).replace(".", "_")}Generated")
@@ -270,7 +281,6 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                         listOf(
                             "tags" to component.tags,
                             "owners" to component.owners,
-                            "routes" to component.routes
                         ).fold(this) { builder, field ->
                             val fieldName = field.first
                             builder.addStatement(

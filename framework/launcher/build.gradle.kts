@@ -4,6 +4,7 @@ import io.xnchung.breadboard.declareMavenPublish
 plugins {
     alias(libs.plugins.com.android.library)
     alias(libs.plugins.org.jetbrains.kotlin.android)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -67,8 +68,11 @@ dependencies {
     implementation(libs.compose.ui.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material.material3)
+    implementation(libs.compose.material.window3)
+
     implementation(libs.breadboard.annotations)
     implementation(libs.breadboard.base)
+    implementation(libs.navigation.compose)
     testImplementation(libs.junit.junit)
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso.core)

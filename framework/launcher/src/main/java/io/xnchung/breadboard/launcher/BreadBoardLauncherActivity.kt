@@ -38,9 +38,10 @@ class BreadBoardLauncherActivity : ComponentActivity() {
             } else {
                 BreadBoardLauncherWithInstrumentationActivity::class.java
             }
-        Intent(intent).also {
-            it.setClass(this, targetClz)
-            startActivity(it)
+        Intent(this, targetClz).apply {
+            data = intent.data
+            replaceExtras(intent)
+            startActivity(this)
             finish()
         }
     }

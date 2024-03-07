@@ -137,13 +137,22 @@ class BreadBoardPlugin : Plugin<Project> {
     private fun Project.configureProcessorFlags() {
         val androidBaseExtension = baseExtension()
         val isApp = plugins.hasPlugin(AppPlugin::class.java)
+        val projectRootPath = rootDir.absolutePath
         fun kotlinAtLeast170() =
             getKotlinPluginVersion(this)?.let { parseKotlinVersion(it) }?.let { it >= KotlinVersion(1, 7) }
         androidBaseExtension.forEachRootVariant {
             if (kotlinAtLeast170() == false) {
                 val debuggable = it.buildType.isDebuggable
                 it.javaCompileOptions.annotationProcessorOptions.compilerArgumentProviders.add(
-                    BreadBoardCmdLineArgumentProvider(false, debuggable, collectDataStrategy, isApp)
+                    BreadBoardCmdLineArgumentProvider(
+                        false,
+                        debuggable,
+                        collectDataStrategy,
+                        isApp,
+                        projectRootPath,
+                        projectDir.absolutePath,
+                        name
+                    )
                 )
             }
         }
@@ -151,7 +160,15 @@ class BreadBoardPlugin : Plugin<Project> {
             buildType?.let { buildType -> androidBaseExtension.buildTypes.findByName(buildType) }?.also {
                 val debuggable = it.isDebuggable
                 val produceArgProvider: (Task) -> CommandLineArgumentProvider = {
-                    BreadBoardCmdLineArgumentProvider(it.isKspTask(), debuggable, collectDataStrategy, isApp)
+                    BreadBoardCmdLineArgumentProvider(
+                        it.isKspTask(),
+                        debuggable,
+                        collectDataStrategy,
+                        isApp,
+                        projectRootPath,
+                        projectDir.absolutePath,
+                        this@configureProcessorFlags.name
+                    )
                 }
                 addKspTaskProcessorOptions(this, produceArgProvider)
                 if (kotlinAtLeast170() != false) {

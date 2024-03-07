@@ -23,7 +23,7 @@ abstract class LauncherViewModel(
     final override val stateHandle: SavedStateHandle,
     final override val allSamples: List<SampleContract>
 ) : LauncherViewModelContract(allExtConverters) {
-    override val targetId = stateHandle.get<String>(Constants.TARGET_ID)
+    override val targetId = stateHandle.get<String>(Constants.START_ID)
 
 }
 

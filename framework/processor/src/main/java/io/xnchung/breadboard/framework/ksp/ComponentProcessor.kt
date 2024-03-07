@@ -30,8 +30,8 @@ class ComponentProcessor(
             generateDiActivity(resolver, codeGenerator)
             generateEmptyDi(resolver, codeGenerator, ClassNames.SAMPLE_CONTRACT_FQN)
         }
-        val ksAnnotatedSequence = resolver.getSymbolsWithAnnotation(Component::class.java.name)
-            .filter {
+        val (valid, invalid) = resolver.getSymbolsWithAnnotation(Component::class.java.name)
+            .partition {
                 val isValid = it.validate()
                 if (!isValid) {
                     logger.warn("this component is not valid ${it.containingFile?.filePath}")
@@ -39,12 +39,14 @@ class ComponentProcessor(
                 (it is KSFunctionDeclaration || it is KSClassDeclaration) &&
                         isValid &&
                         !it.isAnnotationPresent(Deprecated::class)
-            }.takeIf { it.iterator().hasNext() }
-        ksAnnotatedSequence?.apply {
-            val visitor = ComponentVisitor(logger, resolver, codeGenerator, isInstrumentation)
-            forEach { it.accept(visitor, Unit) }
+            }
+        valid.apply {
+            val visitor = ComponentVisitor(logger, resolver, codeGenerator, isInstrumentation, options)
+            forEach {
+                it.accept(visitor, Unit)
+            }
         }
-        return emptyList()
+        return invalid
     }
 }
 

@@ -1,6 +1,7 @@
 package io.xnchung.breadboard.launcher
 
 object Constants {
-    const val TARGET_ID = "targetId"
-    const val TARGET_NAME = "targetName"
+    const val START_ID = "startId"
+    const val START_NAME = "startName"
+    const val CATALOG_HOME = "breadboard_catalog_home"
 }

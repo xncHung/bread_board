@@ -8,9 +8,10 @@ sealed interface SampleContract {
     val documentation: String
     val owners: List<String>
     val target: Target
-    val routes: List<String>
+    val route: String
     val source: String
     val paramHolders: List<ParamHolderContract<*>>
+    val moduleName: String
 }
 
 @Suppress("unused")
@@ -22,7 +23,8 @@ data class Sample(
     override val documentation: String,
     override val owners: List<String>,
     override val target: Target,
-    override val routes: List<String>,
+    override val route: String,
     override val source: String,
-    override val paramHolders: List<ParamHolderContract<*>>
+    override val paramHolders: List<ParamHolderContract<*>>,
+    override val moduleName: String
 ) : SampleContract

@@ -5,7 +5,15 @@
         <activity
             android:name=".BreadBoardLauncherActivity"
             android:exported="true"
-            android:theme="@style/Theme.BreadBoard" />
+            android:icon="@drawable/breadboard"
+            android:label="@string/bread_board"
+            android:theme="@style/Theme.BreadBoard">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".BreadBoardLauncherWithInstrumentationActivity"

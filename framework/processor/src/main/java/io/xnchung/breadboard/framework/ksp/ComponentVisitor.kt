@@ -32,7 +32,11 @@ internal class ComponentVisitor(
     private val resolver: Resolver,
     private val codeGenerator: CodeGenerator,
     private val isInstrumentation: Boolean,
+    options: Map<String, String>,
 ) : KSVisitorVoid() {
+    private val projectRootPath = options[ProcessConstants.ARG_CODE_GEN_PROJECT_ROOT_PATH].orEmpty()
+    private val projectPath = options[ProcessConstants.ARG_CODE_GEN_PROJECT_PATH].orEmpty()
+    private val projectName = options[ProcessConstants.ARG_CODE_GEN_PROJECT_NAME].orEmpty()
     override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
         val target = classDeclaration.generateTargetCodeByClassDeclaration(
             handleActivity = {
@@ -206,8 +210,9 @@ internal class ComponentVisitor(
                     componentSource = componentSource,
                     componentOwners = component.owners,
                     componentTarget = target,
-                    componentRoute = component.routes,
-                    paramHolders = paramHolders
+                    componentRoute = component.route.ifBlank { declarationFullPath },
+                    paramHolders = paramHolders,
+                    projectName = projectName
                 ).toByteArray()
             )
         }
@@ -303,7 +308,7 @@ internal class ComponentVisitor(
 
 
     private fun getFilePath(declaration: KSDeclaration): String {
-        return (declaration.location as? FileLocation)?.filePath.orEmpty()
+        return (declaration.location as? FileLocation)?.filePath?.substringAfter(projectRootPath).orEmpty()
     }
 }
 
@@ -336,8 +341,9 @@ private fun componentTemplate(
     componentSource: String,
     componentOwners: Array<String>,
     componentTarget: String,
-    componentRoute: Array<String>,
+    componentRoute: String,
     paramHolders: Array<String>,
+    projectName: String,
 ): String {
     val func =
         """@Suppress("UNCHECKED_CAST")
@@ -350,7 +356,7 @@ private fun componentTemplate(
                   documentation = ${componentDocs.quote()},
                   owners = listOf(${componentOwners.joinToString(",") { "\"$it\"" }}),
                   target = $componentTarget,
-                  routes=  listOf(${componentRoute.joinToString(",") { "\"$it\"" }}),
+                  route= "$componentRoute",
                   source =  "$componentSource",
                   paramHolders = listOf(${
             paramHolders.joinToString("") {
@@ -358,6 +364,7 @@ private fun componentTemplate(
                       $it,"""
             }
         }),
+                  moduleName = "$projectName"
                 )
             }
         """

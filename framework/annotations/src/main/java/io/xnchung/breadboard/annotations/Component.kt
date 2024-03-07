@@ -10,7 +10,7 @@ annotation class Component(
     val params: Array<Param> = [],
     val description: String = "",
     val tags: Array<String> = [],
-    val routes: Array<String> = [],
+    val route: String = "",
     val documentation: String = "",
     val owners: Array<String> = [],
     val sourcePath: String = "",
