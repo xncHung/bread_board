@@ -227,6 +227,10 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
         simpleName
     }
 
+    fun VariableElement.isNullableByAnnotation(): Boolean {
+        return annotationMirrors.any { it.annotationType.asElement().toFullPath() == "org.jetbrains.annotations.Nullable" }
+    }
+
     private fun createProviderClass(element: Element, componentTarget: String, isInstrumentation: Boolean, vararg args: Any?) {
         val component = element.getAnnotation(Component::class.java)
         val pkgName = processingEnv.elementUtils.getPackageOf(element).toString()
@@ -363,11 +367,10 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                 "null" to listOf()
             }
             val statement =
-                """new ${typeRefLiteral}<${typeRefLiteral}>("$parameterKey","","","",${providerStatement})""".trimIndent()
-            val args = listOf<Any>(
-                ClassName.get("io.xnchung.breadboard.model", "ParamHolder"),
-                typeName,
-            ) + providerArgs
+                """new ${typeRefLiteral}<${typeRefLiteral}>("$parameterKey","","","",${it.isNullableByAnnotation()},${providerStatement},new ${typeRefLiteral}<${typeRefLiteral}>(){})""".trimIndent()
+            val paramHolderTypeName = ClassName.get("io.xnchung.breadboard.model", "ParamHolder")
+            val typeTokenTypeName = ClassName.get("io.xnchung.breadboard.model", "TypeToken")
+            val args = listOf<Any>(paramHolderTypeName, typeName) + providerArgs + listOf(typeTokenTypeName, typeName)
             statement to args
         }.toTypedArray()
 
@@ -408,10 +411,10 @@ class ComponentAptProcessor : BaseComponentAptProcessor() {
                 CollectionType.List -> "[]"
             }
             val statement =
-                """new ${typeRefLiteral}<$fqn>("${param.key}","${param.desc.quoteJava()}","${defaultValue.quoteJava()}","$qualifier",${providerStatement})""".trimIndent()
-            statement to listOf<Any>(
-                ClassName.get("io.xnchung.breadboard.model", "ParamHolder"),
-            ) + providerArgs
+                """new ${typeRefLiteral}<$fqn>("${param.key}","${param.desc.quoteJava()}","${defaultValue.quoteJava()}","$qualifier",${param.nullable},${providerStatement},new ${typeRefLiteral}<$fqn>(){})""".trimIndent()
+            val paramHolderTypeName = ClassName.get("io.xnchung.breadboard.model", "ParamHolder")
+            val typeTokenTypeName = ClassName.get("io.xnchung.breadboard.model", "TypeToken")
+            statement to listOf<Any>(paramHolderTypeName) + providerArgs + listOf(typeTokenTypeName)
         }.toTypedArray()
         return paramHolders
     }

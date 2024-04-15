@@ -15,25 +15,50 @@
  */
 package io.xnchung.breadboard.launcher.ui
 
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.fragment.app.FragmentManager
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.activity
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import io.xnchung.breadboard.converters.ConverterRepo
+import io.xnchung.breadboard.converters.getTypeParameterForParamHolder
 import io.xnchung.breadboard.launcher.Constants
+import io.xnchung.breadboard.launcher.ui.model.NavArgTypeWrapper
+import io.xnchung.breadboard.launcher.ui.model.ParamDraft
+import io.xnchung.breadboard.model.ParamHolderContract
 import io.xnchung.breadboard.model.SampleContract
 import io.xnchung.breadboard.model.Target
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ComponentCatalogNavigation(
@@ -51,8 +76,91 @@ internal fun ComponentCatalogNavigation(
     ) {
         // Add the home destination
         composable(Constants.CATALOG_HOME) {
+            var selectedSample by remember {
+                mutableStateOf<SampleContract?>(null)
+            }
+            var showConverterLoading by remember {
+                mutableStateOf(false)
+            }
             CatalogScreen(samples, settings) {
-                navController.navigate(route)
+
+                when (target) {
+                    is Target.TargetActivity,
+                    is Target.TargetActivityJava -> {
+                        selectedSample = this
+                    }
+
+                    is Target.TargetCommonFunc -> TODO()
+                    is Target.TargetCommonJavaFunc -> TODO()
+                    is Target.TargetCommonJavaFuncVoid -> TODO()
+                    is Target.TargetComposable -> TODO()
+                    is Target.TargetComposableJava -> TODO()
+                    is Target.TargetDialog -> TODO()
+                    is Target.TargetDialogJava -> TODO()
+                    is Target.TargetDialogWithBuildFunc<*> -> TODO()
+                    is Target.TargetDialogWithJavaBuildFunc<*> -> TODO()
+                    is Target.TargetFragment -> TODO()
+                    is Target.TargetFragmentJava -> TODO()
+                    is Target.TargetFragmentWithBuildFunc<*> -> TODO()
+                    is Target.TargetFragmentWithJavaBuildFunc<*> -> TODO()
+                    is Target.TargetView -> TODO()
+                    is Target.TargetViewJava -> TODO()
+                    is Target.TargetViewWithBuildFunc<*> -> TODO()
+                    is Target.TargetViewWithJavaBuildFunc<*> -> TODO()
+                }
+            }
+            selectedSample?.apply {
+                val items = paramHolders.map { ParamDraft(it) }
+                Dialog(onDismissRequest = {}) {
+                    val scope = rememberCoroutineScope()
+                    Column {
+                        Text(text = "Fill Args")
+
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 400.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            content = {
+                                items(items = items, key = { it.key }, itemContent = { paramDraft: ParamDraft<Any?> ->
+                                    TextField(
+                                        value = paramDraft.input.value,
+                                        onValueChange = {
+                                            paramDraft.input.value = it
+                                        },
+                                        placeholder = { Text(text = paramDraft.desc) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                })
+                            })
+
+                        Row {
+                            Button(onClick = {
+                                scope.launch {
+                                    showConverterLoading = true
+                                    items.forEach {
+                                        ConverterRepo.parseArg(this@apply, it, it.input.value)
+                                    }
+                                    val builder = Uri.parse(route).buildUpon()
+                                    val uri = items.fold(builder) { builder: Uri.Builder, paramDraft: ParamDraft<Any?> ->
+                                        builder.appendQueryParameter(paramDraft.key, paramDraft.input.value)
+                                    }.build()
+                                    navController.navigate(uri.toString())
+                                    showConverterLoading = false
+                                    selectedSample = null
+                                }
+                            }) {
+                                Text(text = "Confirm")
+                            }
+                            Button(onClick = { selectedSample = null }) {
+                                Text(text = "Cancel")
+                            }
+                        }
+                    }
+                }
+            }
+            if (showConverterLoading) {
+                LoadingDialog()
             }
         }
 
@@ -74,9 +182,14 @@ private fun NavGraphBuilder.addTargets(
     settings: CatalogSettings,
     onBackClick: () -> Unit,
 ) {
+    val sampleRoute =
+        sample.route + sample.paramHolders.joinToString(
+            separator = "&",
+            prefix = if (sample.route.contains("?")) "" else "?"
+        ) { "${it.key}={${it.key}}" }
     when (val target = sample.target) {
         is Target.TargetComposable -> {
-            composable(sample.route) {
+            composable(sampleRoute) {
                 SampleScaffold(
                     sample = sample,
                     settings = settings,
@@ -88,7 +201,7 @@ private fun NavGraphBuilder.addTargets(
         }
 
         is Target.TargetFragment -> {
-            composable(sample.route) {
+            composable(sampleRoute) {
                 SampleScaffold(
                     sample = sample,
                     settings = settings,
@@ -106,16 +219,28 @@ private fun NavGraphBuilder.addTargets(
         }
 
         is Target.TargetActivity -> {
-            activity(sample.route) {
+            activity(sampleRoute) {
                 label = sample.name
                 activityClass = target.targetClass
+                sample.paramHolders.forEach { holderContract: ParamHolderContract<*> ->
+                    argument(holderContract.key) {
+                        type = NavArgTypeWrapper(holderContract.getTypeParameterForParamHolder(), sample, holderContract)
+                        nullable = holderContract.nullable
+                    }
+                }
             }
         }
 
         is Target.TargetActivityJava -> {
-            activity(sample.route) {
+            activity(sampleRoute) {
                 label = sample.name
                 activityClass = target.targetClass.kotlin
+                sample.paramHolders.forEach { holderContract: ParamHolderContract<*> ->
+                    argument(holderContract.key) {
+                        type = NavArgTypeWrapper(holderContract.getTypeParameterForParamHolder(), sample, holderContract)
+                        nullable = holderContract.nullable
+                    }
+                }
             }
         }
 
@@ -156,5 +281,19 @@ private fun SampleScaffold(
         },
     ) { contentPadding ->
         Box(modifier = Modifier.padding(contentPadding), content = content)
+    }
+}
+
+
+@Composable
+fun LoadingDialog() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        CircularProgressIndicator(Modifier.align(Alignment.Center))
+        Text(
+            "Loading...",
+            Modifier
+                .align(Alignment.Center)
+                .padding(16.dp)
+        )
     }
 }

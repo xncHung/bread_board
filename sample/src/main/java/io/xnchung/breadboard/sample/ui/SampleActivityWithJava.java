@@ -20,7 +20,6 @@ import io.xnchung.breadboard.sample.bizhome.ColorParam;
         description = "the MainActivity of sample app",
         documentation = "the prd or design url,",
         owners = {"david", "zhangsan"},
-        route = "the routeUri",
         tags = {"main biz", "home"},
         params = {
                 @Param(key = "tesString", rawType = String.class, defaultValue = "testStringDefaultValue"),
@@ -46,6 +45,7 @@ import io.xnchung.breadboard.sample.bizhome.ColorParam;
                 @Param(key = "testColorArrayList", rawType = int.class, collectionType = CollectionType.ArrayList, defaultValue = "[\"#ff0000\", \"#00ff00\", \"#0000ff\"]", qualifier = ColorParam.class),
                 @Param(key = "testHashMap",
                         rawType = HashMap.class,
+                        nullable = true,
                         typeArgs = {@TypeToken(rawType = String.class), @TypeToken(rawType = ArrayList.class, typeArgs = {@TypeToken(rawType = int.class)})}
                 )
         }

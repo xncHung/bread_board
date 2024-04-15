@@ -17,7 +17,6 @@ import io.xnchung.breadboard.annotations.TypeToken;
         description = "the MainActivity of sample app",
         documentation = "the prd or design url,",
         owners = {"david", "zhangsan"},
-        route = "the routeUri",
         tags = {"main biz", "home"},
         params = {
                 @Param(key = "testString", rawType = String.class, defaultValue = "testStringDefaultValue"),
@@ -37,6 +36,7 @@ import io.xnchung.breadboard.annotations.TypeToken;
                 @Param(key = "testBooleanArrayList", rawType = Boolean.class, collectionType = CollectionType.ArrayList, defaultValue = "[\"true\", false, true]"),
                 @Param(key = "testHashMap",
                         rawType = HashMap.class,
+                        nullable = true,
                         typeArgs = {@TypeToken(rawType = String.class), @TypeToken(rawType = ArrayList.class, typeArgs = {@TypeToken(rawType = int.class)})}
                 )
         }

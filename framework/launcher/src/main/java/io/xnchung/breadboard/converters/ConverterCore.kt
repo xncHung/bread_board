@@ -41,11 +41,11 @@ internal object ConverterCore {
         mapOf(qualifiedName to listOf(provideBuiltinConverterFactory<Any>().let { ConverterHolder.Normal(qualifiedName, 0, it) }))
     }
 
-    internal suspend fun <T> convertParam(holder: ParamHolderContract<T>, input: String): T {
+    internal suspend fun <T> convertParam(holder: ParamHolderContract<T>, input: String): T? {
         val qualifier = holder.qualifier
         val result = (convertWithConverterFactories(allExtConverterFactories, qualifier, input, holder)
             ?: convertWithConverterFactories(builtInConverterFactories, qualifier, input, holder))
-        return requireNotNull(result) {
+        return if (result == null && holder.nullable) null else requireNotNull(result) {
             "can't convert the input string,input='$input',paramInfo=$holder"
         } as T
     }
@@ -57,7 +57,7 @@ internal object ConverterCore {
         holder: ParamHolderContract<T>
     ): Any? {
         val type = holder.getTypeParameterForParamHolder()
-        return converterFactories[qualifier]?.firstNotNullOfOrNull {
+        return converterFactories[qualifier.takeUnless { it.isBlank() } ?: DefaultQualifier::class.qualifiedName]?.firstNotNullOfOrNull {
             when (it) {
                 is ConverterHolder.Normal -> it.func(input, type)
                 is ConverterHolder.Suspend -> it.func(input, type)
@@ -66,7 +66,9 @@ internal object ConverterCore {
 
     }
 
-    private fun ParamHolderContract<*>.getTypeParameterForParamHolder(): Type {
-        return (this::class.java.genericInterfaces.first { it == TypeToken::class.java } as ParameterizedType).actualTypeArguments.first()
-    }
+
+}
+
+internal fun <T> ParamHolderContract<T>.getTypeParameterForParamHolder(): Type {
+    return (typeToken::class.java.genericInterfaces.first { it is ParameterizedType && it.rawType == TypeToken::class.java } as ParameterizedType).actualTypeArguments.first()
 }

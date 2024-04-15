@@ -81,4 +81,5 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     compileOnly(libs.hilt.android)
+    implementation(kotlin("reflect"))
 }

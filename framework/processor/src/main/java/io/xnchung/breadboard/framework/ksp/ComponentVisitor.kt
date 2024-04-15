@@ -249,7 +249,8 @@ internal class ComponentVisitor(
         .map {
             // TODO: get desc from comment
             val parameterKey = it.parameterKey()
-            val fqn = it.type.resolve().fqnForDeclaration()
+            val resolve = it.type.resolve()
+            val fqn = resolve.fqnForDeclaration()
             val declaration = it.getKSAnnotationsByType(ParamProvider::class).firstOrNull()?.getArg<KSType>("provider")?.declaration
             val providerFqn =
                 (declaration as? KSClassDeclaration)?.run {
@@ -261,7 +262,9 @@ internal class ComponentVisitor(
                             desc = "",
                             defaultValue = "",
                             qualifier = "",
-                            provider = ${providerFqn ?: "null"}
+                            nullable = ${resolve.nullability == Nullability.NULLABLE},
+                            provider = ${providerFqn ?: "null"},
+                            typeToken = object : TypeToken<$fqn>{}
                        )"""
         }.toList().toTypedArray()
 
@@ -301,7 +304,9 @@ internal class ComponentVisitor(
                                 desc="${param.desc}",
                                 defaultValue=$defaultVaule,
                                 qualifier="$qualifier",
-                                provider = ${providerFqn ?: "null"}
+                                nullable = ${param.nullable},
+                                provider = ${providerFqn ?: "null"},
+                                typeToken = object : TypeToken<$fqn>{}
                            )"""
             }?.toTypedArray() ?: emptyArray()
     }

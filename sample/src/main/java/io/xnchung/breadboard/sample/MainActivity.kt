@@ -1,8 +1,10 @@
 package io.xnchung.breadboard.sample
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -19,14 +21,13 @@ import io.xnchung.breadboard.sample.bizhome.ColorParam
 import io.xnchung.breadboard.sample.ui.theme.BreadBoardTheme
 
 @Component(
-    name = "home",
+    name = "home in sample",
     description = "the MainActivity of sample app",
     documentation = """the prd or design url"""",
     owners = ["david", "zhangsan"],
-    route = "the routeUri",
-    tags = ["main biz", "home"],
+    tags = ["main biz"],
     params = [
-        Param(key = "testString", rawType = String::class, defaultValue = "testStringDefaultValue"),
+        Param(key = "testString", rawType = String::class, defaultValue = "testStringDefaultValue", desc = "a string for test"),
         Param(key = "testInt", rawType = Int::class, defaultValue = "1"),
         Param(key = "testFloat", rawType = Float::class, defaultValue = "1.0"),
         Param(key = "testDouble", rawType = Double::class, defaultValue = "3.4"),
@@ -121,8 +122,11 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
+    private val viewModel by viewModels<CommonViewModel>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "onCreate() called with: savedInstanceState = $savedInstanceState")
+        viewModel
         setContent {
             BreadBoardTheme {
                 // A surface container using the 'background' color from the theme

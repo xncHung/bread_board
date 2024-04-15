@@ -61,17 +61,17 @@ class ConverterAptProcessor : BaseComponentAptProcessor() {
 
                             returnType.typeArguments.run {
                                 size == 4
-                                        //                                    first must be String
+                                        //first must be String
                                         && typeUtils.isSameType(
                                     first() as TypeMirror,
                                     elementUtils.getTypeElement(String::class.java.canonicalName).asType()
                                 )
-                                        //                                    second must be Type
+                                        //second must be Type
                                         && typeUtils.isSameType(
                                     this[1] as TypeMirror,
                                     elementUtils.getTypeElement(Type::class.java.canonicalName).asType()
                                 )
-                                        //                                    third must be Continuation
+                                        //third must be Continuation
                                         && typeUtils.isSubtype(
                                     (this[2] as DeclaredType).asElement().asType(),
                                     elementUtils.getTypeElement(Continuation::class.java.canonicalName).asType()
